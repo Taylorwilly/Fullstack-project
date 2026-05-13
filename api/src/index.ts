@@ -68,6 +68,26 @@ app.post("/submissions", (req, res) => {
     res.status(201).json(newSubmission);
 })
 
+app.post("/workflows/:id/steps", (req, res) => {
+    const {id} = req.params;
+    const {title, order} = req.body;
+    const workflow = workflows.find((workflow) => workflow.id ===id);
+
+    if(!workflow){
+        return res.status(404).json({message:"Workflow not found"});
+    }
+    if(!title || !title.trim()){
+        return res.status(400).json({message:"Step title is required"});
+    }
+    const newStep = {
+        id: `st${workflowSteps.length +1}`,
+        workflowId: id,
+        title: title.trim(),
+        order: typeof order === "number" ? order : workflowSteps.filter((s) => s.workflowId === id).length + 1,
+    };
+    workflowSteps.push(newStep);
+    res.status(201).json(newStep);
+})
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
