@@ -68,9 +68,11 @@ app.post("/submissions", (req, res) => {
     res.status(201).json(newSubmission);
 })
 
+//We create a route for new steps.
 app.post("/workflows/:id/steps", (req, res) => {
     const {id} = req.params;
     const {title, order} = req.body;
+    //We find the corresponding workflow in the workflows array in the backend
     const workflow = workflows.find((workflow) => workflow.id ===id);
 
     if(!workflow){
@@ -79,15 +81,17 @@ app.post("/workflows/:id/steps", (req, res) => {
     if(!title || !title.trim()){
         return res.status(400).json({message:"Step title is required"});
     }
+    //If the workflow exits in the api, we create a new step for that workflow
     const newStep = {
         id: `st${workflowSteps.length +1}`,
         workflowId: id,
         title: title.trim(),
+        //If the order is not a number, we find the length of the workflowSteps for that id and add 1
         order: typeof order === "number" ? order : workflowSteps.filter((s) => s.workflowId === id).length + 1,
     };
     workflowSteps.push(newStep);
     res.status(201).json(newStep);
-})
+});
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
