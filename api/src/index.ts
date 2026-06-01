@@ -30,6 +30,9 @@ const workflowSteps = [
 const submissions = [
     { id: "s1", userId: "u1", workflowId: "w1", status: "draft" }
 ]
+app.get("/workflows", (_req, res) => {
+    res.json(workflows);
+});
 //This get handles calls from fetch("/workflows/[id]") in web browser
 app.get("/workflows/:id", (req, res) =>{
     const {id} = req.params;
@@ -40,33 +43,35 @@ app.get("/workflows/:id", (req, res) =>{
     const steps = workflowSteps.filter((step) => step.workflowId === id).sort((a,b) => a.order - b.order);
     res.json({...workflow, steps});
 });
-app.get("/workflows", (_req, res) => {
-    res.json(workflows);
-});
 
 app.post("/workflows", (req, res) => {
-    const { name } = req.body;
+    const {name, steps} = req.body;
+    //We insert the new worflow in the backend
+    if(!name || !name.trim()){
+        return res.status(400).json({message: "The name is required"});
+    }
     const newWorkflow = {
-        id: `w${workflows.length + 1}`,
-        name,
-    };
+        id: `w${workflows.length +1}`,
+        name: name.trim(),
+    }
     workflows.push(newWorkflow);
-    res.status(201).json(newWorkflow);
+    //We now push the new step to the backend
+    const createdSteps = Array.isArray(steps)
+        ? steps.map((step, index) => {
+            const newStep = {
+                id:`st${workflowSteps.length +1}`,
+                workflowId: newWorkflow.id,
+                title: newWorkflow.name,
+                order: typeof step.order === "number" ?
+                    step.order : index +1,
+            }
+            workflowSteps.push(newStep);
+            return newStep;
+        })
+        : [];
+    res.status(201).json({...newWorkflow, steps: createdSteps});
+
 });
-app.get("/submissions", (req, res) => {
-    res.json(submissions);
-})
-app.post("/submissions", (req, res) => {
-    const { userId, workflowId, status } = req.body;
-    const newSubmission = {
-        id: `s${submissions.length + 1}`,
-        userId,
-        workflowId,
-        status,
-    };
-    submissions.push(newSubmission);
-    res.status(201).json(newSubmission);
-})
 
 //We create a route for new steps.
 app.post("/workflows/:id/steps", (req, res) => {
@@ -92,6 +97,85 @@ app.post("/workflows/:id/steps", (req, res) => {
     workflowSteps.push(newStep);
     res.status(201).json(newStep);
 });
+
+//Patching the workflow/:id
+app.patch("/workflows/:id", (req, res) => {
+    const {id} = req.params;
+    const {name} = req.body;
+    const workflow = workflows.find((workflow) => workflow.id === id);
+
+    if(!workflow) return res.status(404).json({message: "No workflow found"});
+    
+    if(!name || !name.trim()) return res.status(404).json({message: "You must enter a name"});
+    workflow.name = name.trim();
+    res.json(workflow);
+})
+
+//This is the route for updating steps
+app.patch("/workflows/:workflowId/steps/:stepId", (req, res) => {
+    const {workflowId, stepId} = req.params;
+    const {title} = req.body;
+    const workflow = workflows.find((workflow) => workflow.id === workflowId);
+
+    if(!workflow) return res.status(404).json({message: "No workflow found"});
+
+    const step = workflowSteps.find((step) => step.id === stepId && step.workflowId === workflowId);
+    
+    if(!step) return res.status(404).json({message: "No step found"});
+
+    if(!title || !title.trim()) return res.status(404).json({message: "The title is required"});
+    //As we found the workflow and step, now we update the title othe step
+    step.title = title.trim();
+    res.json(step);
+
+})
+
+//Delete steps from workflowSteps
+app.delete("/workflows/:workflowId/steps/:stepId", (req, res) => {
+    const {workflowId, stepId} = req.params;
+
+    //We check if the specified workflow exists in the workflows array
+    const workflow = workflows.find((workflow) => workflow.id === workflowId);
+    if(!workflow) return res.status(404).json({message: "The workflow could not be found"});
+
+    //Since the workflow exists, we now find the index of the step so that we can splice the array at that index
+    const stepIndex = workflowSteps.findIndex((step) => step.id === stepId && step.workflowId === workflowId );
+    if(stepIndex === -1) return res.status(404).json({message: "Step not found"});
+
+    //Since we found the index, then we can now delete the step
+    const deletedStep = workflowSteps[stepIndex];
+    workflowSteps.splice(stepIndex,1);
+
+    //We now filter and sort the remaining steps
+    const remainderSteps = workflowSteps.filter((step) => step.workflowId === workflowId).sort((a,b) => a.order - b.order);
+    //Here we reorder the steps so that there is no gap between orders
+    remainderSteps.forEach((step, index) => {
+        step.order = index + 1;
+    } );
+
+    //Then we send a response message at the frontend
+    res.json({
+        message: "The step was deleted successfully: ",
+        deletedStep,
+    });
+
+});
+
+app.get("/submissions", (req, res) => {
+    res.json(submissions);
+})
+app.post("/submissions", (req, res) => {
+    const { userId, workflowId, status } = req.body;
+    const newSubmission = {
+        id: `s${submissions.length + 1}`,
+        userId,
+        workflowId,
+        status,
+    };
+    submissions.push(newSubmission);
+    res.status(201).json(newSubmission);
+})
+
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
