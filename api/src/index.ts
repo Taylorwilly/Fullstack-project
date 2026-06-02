@@ -43,6 +43,24 @@ app.get("/workflows/:id", (req, res) =>{
     const steps = workflowSteps.filter((step) => step.workflowId === id).sort((a,b) => a.order - b.order);
     res.json({...workflow, steps});
 });
+//Deleting a workflow and its steps
+app.delete("/workflows/:id", (req, res) => {
+    const workflowId = req.params.id;
+
+    const workflow = workflows.find((workflow) => workflow.id === workflowId);
+    if(!workflow) return res.status(404).json({message: "Workflow not found"});
+    
+    const workflowIndex = workflows.findIndex((workflow) => workflow.id === workflowId);
+    const deletedWorkflow = workflows.splice(workflowIndex, 1)[0];
+
+    const remaingSteps = workflowSteps.filter((step) => step.workflowId !== workflowId);
+    workflowSteps.length = 0;
+    workflowSteps.push(...remaingSteps);
+
+    res.status(200).json({message: "Workflow deleted successfully",
+        deletedWorkflow,
+    });
+});
 
 app.post("/workflows", (req, res) => {
     const {name, steps} = req.body;
@@ -129,6 +147,46 @@ app.patch("/workflows/:workflowId/steps/:stepId", (req, res) => {
     res.json(step);
 
 })
+
+//Here we are reordering steps
+app.patch("/workflows/:workflowId/steps/:stepId/move", (req, res) => {
+    const {workflowId, stepId} = req.params;
+    const {direction} = req.body;
+
+    const workflow = workflows.find((workflow) => workflow.id === workflowId);
+    if(!workflow) return res.status(404).json({message: "Workflow not found"});
+    
+    const currentStep = workflowSteps.find((step) => step.workflowId === workflowId && step.id === stepId);
+    if(!currentStep) return res.status(404).json({message: "Step not found"});
+
+    if(direction !== "up" && direction !== "down") return res.status(400).json({message: "Direction must be 'up' or down' "});
+
+    const remainderSteps = workflowSteps.filter((step) => step.workflowId === workflowId).sort((a,b) => a.order - b.order);
+    const currentIndex = remainderSteps.findIndex((step) =>  step.id === stepId);
+    if(currentIndex === -1) return res.status(404).json({message: "Index not found"});
+    //We move one step up by swapping the step with it's neigbor up
+    if(direction === "up"){
+        if(currentIndex ===0) return res.status(200).json({message: `Step is already at the top.`});
+        const targetStep = remainderSteps[currentIndex - 1];
+        const tempOrder = currentStep.order;
+        currentStep.order = targetStep.order;
+        targetStep.order = tempOrder;
+    }
+    //We move one step down by swapping the step with it's neigbor down
+     if(direction === "down"){
+        if(currentIndex === remainderSteps.length -1) return res.status(200).json({message: `Step is already at the bottom.`});
+        const targetStep = remainderSteps[currentIndex + 1];
+        const tempOrder = currentStep.order;
+        currentStep.order = targetStep.order;
+        targetStep.order = tempOrder;
+    }
+    const reorderedSteps = remainderSteps.filter((step) => step.workflowId === workflowId).sort((a,b) => a.order - b.order);
+    return res.status(200).json({
+        message:`Step move ${direction} successfully`,
+        steps: reorderedSteps,
+    });
+
+});
 
 //Delete steps from workflowSteps
 app.delete("/workflows/:workflowId/steps/:stepId", (req, res) => {
