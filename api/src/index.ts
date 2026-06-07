@@ -28,7 +28,7 @@ const workflowSteps = [
 ];
 
 const submissions = [
-    { id: "s1", userId: "u1", workflowId: "w1", status: "draft" }
+    { id: "s1", workflowId: "w1", status: "draft" }
 ]
 app.get("/workflows", (_req, res) => {
     res.json(workflows);
@@ -222,16 +222,25 @@ app.delete("/workflows/:workflowId/steps/:stepId", (req, res) => {
 app.get("/submissions", (req, res) => {
     res.json(submissions);
 })
+
+
 app.post("/submissions", (req, res) => {
-    const { userId, workflowId, status } = req.body;
+    const {workflowId, answers, status} = req.body;
+    const workflow = workflows.find((workflow) => workflow.id === workflowId);
+
+    if(!workflow) return res.status(404).json({message: "Failed to find workflow"});
+
+    if(!answers || typeof answers !== 'object' || Array.isArray(answers)) {
+        return res.status(404).json({message: "The answer must be an object"});
+    }
     const newSubmission = {
-        id: `s${submissions.length + 1}`,
-        userId,
+        id: `sub${submissions.length +1}`,
         workflowId,
-        status,
+        answers,
+        status: "Submitted",
     };
-    submissions.push(newSubmission);
-    res.status(201).json(newSubmission);
+    submissions.push(newSubmission)
+    return res.status(201).json({message: "Submission suceeded"});
 })
 
 
