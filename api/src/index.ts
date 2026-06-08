@@ -7,6 +7,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+type Submission = {
+    id: string;
+    workflowId: string;
+    status: string;
+    answers : Record<string, string>;
+};
 
 app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
@@ -27,9 +33,7 @@ const workflowSteps = [
     {id: "st5", workflowId: "w2", title:"Invoice Upload", order:2}
 ];
 
-const submissions = [
-    { id: "s1", workflowId: "w1", status: "draft" }
-]
+const submissions: Submission[] = [];
 app.get("/workflows", (_req, res) => {
     res.json(workflows);
 });
@@ -229,10 +233,16 @@ app.post("/submissions", (req, res) => {
     const workflow = workflows.find((workflow) => workflow.id === workflowId);
 
     if(!workflow) return res.status(404).json({message: "Failed to find workflow"});
-
+    //We validate if the answers exist and is an object, not an array
     if(!answers || typeof answers !== 'object' || Array.isArray(answers)) {
         return res.status(404).json({message: "The answer must be an object"});
     }
+    //And we validate that all values in the object are strings
+    const allValues = Object.values(answers).every(
+        (value) => typeof value === 'string'
+    );
+    if(!allValues) return res.status(400).json({message: "All values should be string"});
+    
     const newSubmission = {
         id: `sub${submissions.length +1}`,
         workflowId,
@@ -240,7 +250,31 @@ app.post("/submissions", (req, res) => {
         status: "Submitted",
     };
     submissions.push(newSubmission)
+    console.log("current submission: ", submissions);
     return res.status(201).json({message: "Submission suceeded"});
+})
+
+app.patch("/submissions/:id/status", (req, res) => {
+    const {id} = req.params;
+    const {status} = req.body;
+
+    if(!status) return res.status(400).json({message: "Status is required!"});
+
+    const submission = submissions.find((submission) => submission.id === id);
+    if(!submission) return res.status(404).json({message: "No submission found"});
+
+    const stats = ["submitted", "in_review", "approved", "rejected"];
+    if (!stats.includes(status)){
+        return res.status(400).json({message: "Wrong status sent"});
+    }
+
+    submission.status = status;
+    
+    return res.status(200).json({
+        message: "Status changed",
+        submissions,
+    })
+    
 })
 
 
