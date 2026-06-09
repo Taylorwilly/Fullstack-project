@@ -1,4 +1,5 @@
 import Link from "next/link";
+import StatusButton from "./StatusButton";
 
 type Props = {
     params : Promise<{submissionId: String}>;
@@ -7,7 +8,7 @@ type Props = {
 type Submission = {
     id: string;
     workflowId: string;
-    answers?: Record<string, string>;
+    answers: Record<string, string>;
     status: string;
 }
 
@@ -15,7 +16,7 @@ export default async function SubmissionPage({params}: Props){
     const {submissionId} = await params;
 
     const res = await fetch(`http://localhost:4000/submissions/${submissionId}`, {
-        cache: "no-store",
+        cache: "no-store"
     });
 
     if(!res.ok){
@@ -43,9 +44,12 @@ export default async function SubmissionPage({params}: Props){
                     Status: {submission.status}
                 </div>
                 <div>
-                    Answers: {Object.entries(submission.answers ?? {})}
+                    Answers: {Object.entries(submission.answers)}
                 </div>
+                <StatusButton submissionId= {submission.id} />
+                  
             </li>
+           
 
         </main>
     )

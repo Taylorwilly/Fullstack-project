@@ -229,7 +229,7 @@ app.get("/submissions", (req, res) => {
 
 
 app.post("/submissions", (req, res) => {
-    const {workflowId, answers, status} = req.body;
+    const {workflowId, answers} = req.body;
     const workflow = workflows.find((workflow) => workflow.id === workflowId);
 
     if(!workflow) return res.status(404).json({message: "Failed to find workflow"});
@@ -243,7 +243,7 @@ app.post("/submissions", (req, res) => {
     );
     if(!allValues) return res.status(400).json({message: "All values should be string"});
     
-    const newSubmission = {
+    const newSubmission : Submission = {
         id: `sub${submissions.length +1}`,
         workflowId,
         answers,
