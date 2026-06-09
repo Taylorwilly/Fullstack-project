@@ -14,11 +14,18 @@ type Submission = {
     answers : Record<string, string>;
 };
 
-app.get("/health", (_req, res) => {
-    res.json({ status: "ok" });
-});
+type Workflow = {
+    id: string;
+    name: string;
+}
 
-// test data for the API
+type WorkflowStep = {
+    id: string;
+    workflowId: string;
+    title: string;
+    order: number;
+};
+
 const workflows = [
     { id: "w1", name: "Client Onboarding" },
     { id: "w2", name: "Invoice Processing" }
@@ -34,6 +41,12 @@ const workflowSteps = [
 ];
 
 const submissions: Submission[] = [];
+
+
+app.get("/health", (_req, res) => {
+    res.json({ status: "ok" });
+});
+
 app.get("/workflows", (_req, res) => {
     res.json(workflows);
 });
@@ -275,6 +288,15 @@ app.patch("/submissions/:id/status", (req, res) => {
         submissions,
     })
     
+})
+
+app.get("/submissions/:id", (req, res) => {
+    const {id} = req.params;
+    const submission = submissions.find((submission) => submission.id === id);
+
+    if(!submission) return res.status(404).json({message: "Submission not found"});
+
+    res.status(200).json(submission);
 })
 
 

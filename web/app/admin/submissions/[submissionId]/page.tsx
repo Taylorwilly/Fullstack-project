@@ -7,7 +7,7 @@ type Props = {
 type Submission = {
     id: string;
     workflowId: string;
-    answers?: Record<string, string>;
+    answers: Record<string, string>;
     status: string;
 }
 
@@ -43,7 +43,7 @@ export default async function SubmissionPage({params}: Props){
                     Status: {submission.status}
                 </div>
                 <div>
-                    Answers: {Object.entries(submission.answers ?? {})}
+                    Answers: {Object.entries(submission.answers)}
                 </div>
             </li>
 
