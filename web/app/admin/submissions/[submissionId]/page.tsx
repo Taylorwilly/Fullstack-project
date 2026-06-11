@@ -4,53 +4,115 @@ import StatusButton from "./StatusButton";
 type Props = {
     params : Promise<{submissionId: String}>;
 }
+type SubmissionStatus = "Submitted" | "In_Review" |"Approved" | "Rejected";
 
 type Submission = {
     id: string;
     workflowId: string;
     answers: Record<string, string>;
-    status: string;
+    status: SubmissionStatus;
+}
+
+type WorkflowStep = {
+    id: string;
+    workflowId: string;
+    title: string;
+    order: number;
+}
+type Workflow = {
+    id : string;
+    name: string;
+    steps: WorkflowStep[];
 }
 
 export default async function SubmissionPage({params}: Props){
     const {submissionId} = await params;
 
-    const res = await fetch(`http://localhost:4000/submissions/${submissionId}`, {
+    const submissionRes = await fetch(`http://localhost:4000/submissions/${submissionId}`, {
         cache: "no-store"
     });
 
-    if(!res.ok){
+    if(!submissionRes.ok){
         return (
             <main className="min-h-screen p-8">
                 <div className="mx-auto max-w-2xl">
+                    <Link href="/admin/submissions" className="underline text-sm">
+                        Back to submissions
+                    </Link>
                     <h1 className="text-3xl font-bold">Submission not found</h1>
                     <p className="mt-2 text-gray-600">No submission exists for ID: {submissionId}</p>
                 </div>
             </main>
         );
     }
-    const submission: Submission = await res.json()
+    const submission: Submission = await submissionRes.json();
+
+    const workflowRes = await fetch(`http://localhost:4000/workflows/${submission.workflowId}`, {
+        cache: "no-store",
+    })
+    if(!workflowRes.ok){
+        return (
+            <main className="min-h-screen p-8">
+                <div className="mx-auto max-w-2xl">
+                    <Link href="/admin/submissions" className="underline text-sm">
+                        Back to submissions
+                    </Link>
+                    <h1 className="text-3xl font-bold">Workflow not found</h1>
+                    <p className="mt-2 text-gray-600">The workflow could not be loaded</p>
+                </div>
+            </main>
+        );
+    }
+    const workflow: Workflow = await workflowRes.json(); 
+
+    const sortedSteps = [...workflow.steps].sort((a, b) => a.order - b.order);
 
     return (
-        <main>
-            <li>
-                <div>
-                    Submission id: {submission.id}
-                </div>
-                <div>
-                    Workflow id: {submission.workflowId}
-                </div>
-                <div>
-                    Status: {submission.status}
-                </div>
-                <div>
-                    Answers: {Object.entries(submission.answers)}
-                </div>
-                <StatusButton submissionId= {submission.id} />
-                  
-            </li>
-           
+        <main className="min-h-screen p-8">
+            <div className="mx-auto max-w-2xl">
+                <Link href="/admin/submissions" className="underline text-sm">
+                    Back to submissions
+                </Link>
+                <h1 className="mt-4 text-3xl font-bold">
+                    Submission Details
+                </h1>
+                <div className="mt-6 border rounded space-y-2 p-4">
+                    <div >
+                        Submission id: {submission.id}
+                    </div>
+                    <div>
+                        Workflow: {workflow.name}
+                    </div>
+                    <div>
+                        Workflow id: {submission.workflowId}
+                    </div>
+                    <div>
+                        Status: {submission.status}
+                    </div>
 
+                    <StatusButton submissionId= {submission.id} currentStatus={submission.status} />
+                </div>
+
+                <section className="mt-6">
+                    <h2 className="font-semibold text-xl">Answers</h2>
+                
+                    <ul className="mt-4 space-y-3">
+                        {
+                            sortedSteps.map((step) => {
+                                const answer = submission.answers[step.id];
+
+                                return (
+                                    <li key={step.id} className="rounded border p-4">
+                                        <div className="font-semibold">{step.title}</div>
+                                        <div className="mt-1 text-gray-700">{answer || "No answer provided"}</div>
+                                    </li>
+                                );
+                            })
+                        }
+                
+                    </ul>
+                </section>  
+            </div>
         </main>
     )
 

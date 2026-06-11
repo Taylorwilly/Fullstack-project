@@ -277,7 +277,7 @@ app.patch("/submissions/:id/status", (req, res) => {
     if(!submission) return res.status(404).json({message: "No submission found"});
 
     const stats = ["submitted", "in_review", "approved", "rejected"];
-    if (!stats.includes(status)){
+    if (!stats.includes(status.toLowerCase())){
         return res.status(400).json({message: "Wrong status sent"});
     }
 

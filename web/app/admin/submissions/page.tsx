@@ -48,10 +48,10 @@ export default async function AdminSubmissionsPage() {
                     {submissions.map((submission) => (
                     <li key={submission.id} className="border rounded px-3 ">
                         <div>
-                            Submission: {submission.id}
+                            Submission ID: {submission.id}
                         </div>
                         <div>
-                            Workflow: {submission.workflowId}
+                            Workflow ID: {submission.workflowId}
                         </div>
                         <div>
                             Status: {submission.status}
