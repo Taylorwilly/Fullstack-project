@@ -260,11 +260,11 @@ app.post("/submissions", (req, res) => {
         id: `sub${submissions.length +1}`,
         workflowId,
         answers,
-        status: "Submitted",
+        status: "submitted",
     };
     submissions.push(newSubmission)
     console.log("current submission: ", submissions);
-    return res.status(201).json({message: "Submission suceeded"});
+    return res.status(201).json(newSubmission);
 })
 
 app.patch("/submissions/:id/status", (req, res) => {

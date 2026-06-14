@@ -4,7 +4,7 @@ import StatusButton from "./StatusButton";
 type Props = {
     params : Promise<{submissionId: String}>;
 }
-type SubmissionStatus = "Submitted" | "In_Review" |"Approved" | "Rejected";
+type SubmissionStatus = "submitted" | "in_review" |"approved" | "rejected";
 
 type Submission = {
     id: string;
@@ -23,6 +23,12 @@ type Workflow = {
     id : string;
     name: string;
     steps: WorkflowStep[];
+}
+
+//This function helps us to show the first letter of status in capital to the client
+function formatStatus(status: SubmissionStatus) {
+    if(status === "in_review") return "In Review";
+    return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 export default async function SubmissionPage({params}: Props){
@@ -87,7 +93,7 @@ export default async function SubmissionPage({params}: Props){
                         Workflow id: {submission.workflowId}
                     </div>
                     <div>
-                        Status: {submission.status}
+                        Status: {formatStatus(submission.status)}
                     </div>
 
                     <StatusButton submissionId= {submission.id} currentStatus={submission.status} />
