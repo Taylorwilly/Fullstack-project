@@ -2,7 +2,7 @@
 
 import {useState, useEffect} from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 type Step = {
     id: string;
@@ -18,6 +18,7 @@ type Workflow = {
 };
 
 export default function SubmissionDefaultPage(){
+    const router = useRouter();
     const params = useParams();
     const workflowId = Array.isArray(params.workflowId) 
         ? params.workflowId[0] 
@@ -28,7 +29,7 @@ export default function SubmissionDefaultPage(){
     const [loading, setLoading] = useState(true);
     const [answers, setAnswers] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState(false);
-    const [submitted, setSubmitted] = useState(false);
+    
     async function loadWorkflow() {
         try{
             setLoading(true);
@@ -77,7 +78,10 @@ export default function SubmissionDefaultPage(){
             });
             if(!res.ok) throw new Error("Failed to submit the answers");
 
-            setSubmitted(true);           
+            const createdSubmission = await res.json();
+           
+            //After submission, we redirect the client to the application status
+            router.push(`/my_submissions/${createdSubmission.id}`);
         }
         catch(error){
            console.error("Failed to submit answers", error); 
@@ -85,10 +89,6 @@ export default function SubmissionDefaultPage(){
         finally{
             setSubmitting(false);
         }
-    }
-
-    async function handleStatus(){
-        
     }
 
     useEffect(() =>{
@@ -122,20 +122,6 @@ export default function SubmissionDefaultPage(){
             </main>
         );
     };
-    if(submitted){
-            return (
-                <main className="min-h-screen p-8">
-                    <div className="mx-auto max-w-2xl">
-                        <h1 className="font-bold text-3xl">
-                            Submission succeeded
-                        </h1>
-                        <p className="mt-2 text-gray-600">
-                            Your answers were submitted successfully
-                        </p>
-                    </div>
-                </main>
-            )
-        }
 
     const currentStep = workflow.steps[currentStepIndex];
     const isFirstStep = currentStepIndex === 0;
@@ -205,10 +191,8 @@ export default function SubmissionDefaultPage(){
                                 >
                                     {submitting ? "Submitting..." : "Submit"}
                                 </button>
-                           )
-                            
+                           )                          
                     }
- 
                 </div>
             </div>
         </main>
