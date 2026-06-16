@@ -9,7 +9,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -22,15 +21,40 @@ model Workflow {
   id          String   @id @default(cuid())
   name        String
   description String?
+  steps WorkflowStep[]
+  submissions Submission[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model WorkflowStep {
+  id  String @id @default(cuid()) 
+  workflowId String
+  title String
+  order Int
+  workflow Workflow   @relation(fields: [workflowId], references: id, onDelete: Cascade)
+  answers SubmissionAnswer[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
 model Submission {
   id         String   @id @default(cuid())
-  userId     String
+  userId     String?
   workflowId String
-  status     String
+  status     String   
+  workflow Workflow   @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  answers SubmissionAnswer[]
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+model SubmissionAnswer {
+  id String   @id @default(cuid())
+  submissionId String
+  stepId String
+  value String
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  step WorkflowStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }

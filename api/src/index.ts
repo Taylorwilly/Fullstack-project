@@ -1,9 +1,16 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
 dotenv.config();
 const app = express();
+const adapter = new PrismaPg({
+    connectionString: process.env.DATABASE_URL,
+});
+export const prisma = new PrismaClient({adapter});
+
 app.use(cors());
 app.use(express.json());
 
@@ -47,7 +54,14 @@ app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
 });
 
-app.get("/workflows", (_req, res) => {
+app.get("/workflows", async(_req, res) => {
+    //We ask prisma to find workflow in postgres
+    //since we migrate from array storage to database storage
+    const workflows = await prisma.workflow.findMany({
+        include: {
+            steps: true,
+        },
+    });
     res.json(workflows);
 });
 //This get handles calls from fetch("/workflows/[id]") in web browser
@@ -65,7 +79,7 @@ app.delete("/workflows/:id", (req, res) => {
     const workflowId = req.params.id;
 
     const workflow = workflows.find((workflow) => workflow.id === workflowId);
-    if(!workflow) return res.status(404).json({message: "Workflow not found"});
+    if(!workflow) return res.status(404).json({message: "Workflow Not Found"});
     
     const workflowIndex = workflows.findIndex((workflow) => workflow.id === workflowId);
     const deletedWorkflow = workflows.splice(workflowIndex, 1)[0];
@@ -79,32 +93,49 @@ app.delete("/workflows/:id", (req, res) => {
     });
 });
 
-app.post("/workflows", (req, res) => {
+app.post("/workflows", async(req, res) => {
     const {name, steps} = req.body;
-    //We insert the new worflow in the backend
+    //We first validate the workflow name
     if(!name || !name.trim()){
         return res.status(400).json({message: "The name is required"});
     }
-    const newWorkflow = {
-        id: `w${workflows.length +1}`,
-        name: name.trim(),
+    //Then we validate steps array
+    if(!Array.isArray(steps) || steps.length === 0){
+        return res.status(400).json({message: "At least one step is required"});
     }
-    workflows.push(newWorkflow);
-    //We now push the new step to the backend
-    const createdSteps = Array.isArray(steps)
-        ? steps.map((step, index) => {
-            const newStep = {
-                id:`st${workflowSteps.length +1}`,
-                workflowId: newWorkflow.id,
-                title: newWorkflow.name,
-                order: typeof step.order === "number" ?
-                    step.order : index +1,
-            }
-            workflowSteps.push(newStep);
-            return newStep;
-        })
-        : [];
-    res.status(201).json({...newWorkflow, steps: createdSteps});
+    //Then we validate each step title
+    const hasInvalidStep = steps.some(
+        (step) => !step.title || !step.title.trim()
+    );
+
+    if(hasInvalidStep) return res.status(400).json({
+        message: "Step title is required for each step"
+    });
+
+    try {
+        //We insert a workflow and its steps 
+        // into the database now instead of memory arrays
+        const newWorkflow = await prisma.workflow.create({
+        data: {
+            name: name.trim(),
+            steps: {
+                create: steps.map((step, index) => ({
+                  title: step.title.trim(),
+                  order: typeof step.order === "number" ? step.order : index +1,  
+                }))
+            },
+        },
+        include: { 
+            steps: true,
+        }
+   }) 
+        return res.status(201).json(newWorkflow);
+    }
+    catch(error){
+        console.error("Failed to create workflow", error);
+
+        return res.status(500).json({message: "Failed to create workflow"});
+    }
 
 });
 
@@ -116,7 +147,7 @@ app.post("/workflows/:id/steps", (req, res) => {
     const workflow = workflows.find((workflow) => workflow.id ===id);
 
     if(!workflow){
-        return res.status(404).json({message:"Workflow not found"});
+        return res.status(404).json({message:"Workflow not Found"});
     }
     if(!title || !title.trim()){
         return res.status(400).json({message:"Step title is required"});

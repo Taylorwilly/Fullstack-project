@@ -66,10 +66,9 @@ export default function NewWorkflowPage(){
             if(!res.ok){
                 throw new Error("Failed to create workflow");
             }
-            const createWorkflow: CreatedWorkflow = await res.json();
+            const createdWorkflow: CreatedWorkflow = await res.json();
 
-            router.push(`/admin/workflows/${createWorkflow.id}`);
-            router.refresh();
+            router.push(`/admin/workflows/${createdWorkflow.id}`);
         }
         catch(error){
             console.error("Failed to create workflow", error);
