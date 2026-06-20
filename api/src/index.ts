@@ -9,7 +9,7 @@ const app = express();
 const adapter = new PrismaPg({
     connectionString: process.env.DATABASE_URL,
 });
-export const prisma = new PrismaClient({adapter});
+export const prisma = new PrismaClient({ adapter });
 
 app.use(cors());
 app.use(express.json());
@@ -18,7 +18,7 @@ type Submission = {
     id: string;
     workflowId: string;
     status: string;
-    answers : Record<string, string>;
+    answers: Record<string, string>;
 };
 
 type Workflow = {
@@ -39,12 +39,12 @@ const workflows = [
 ];
 
 const workflowSteps = [
-    {id: "st1", workflowId: "w1", title:"Personal Info", order:1},
-    {id: "st2", workflowId: "w1", title:"Address", order:2},
-    {id: "st3", workflowId: "w1", title:"Upload ID", order:3},
+    { id: "st1", workflowId: "w1", title: "Personal Info", order: 1 },
+    { id: "st2", workflowId: "w1", title: "Address", order: 2 },
+    { id: "st3", workflowId: "w1", title: "Upload ID", order: 3 },
 
-    {id: "st4", workflowId: "w2", title:"Business Details", order:1},
-    {id: "st5", workflowId: "w2", title:"Invoice Upload", order:2}
+    { id: "st4", workflowId: "w2", title: "Business Details", order: 1 },
+    { id: "st5", workflowId: "w2", title: "Invoice Upload", order: 2 }
 ];
 
 const submissions: Submission[] = [];
@@ -54,7 +54,7 @@ app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
 });
 
-app.get("/workflows", async(_req, res) => {
+app.get("/workflows", async (_req, res) => {
     //We ask prisma to find workflow in postgres
     //since we migrate from array storage to database storage
     const workflows = await prisma.workflow.findMany({
@@ -64,51 +64,22 @@ app.get("/workflows", async(_req, res) => {
     });
     res.json(workflows);
 });
-//This get handles calls from fetch("/workflows/[id]") in web browser
-app.get("/workflows/:id", (req, res) =>{
-    const {id} = req.params;
-    const workflow = workflows.find((workflow) => workflow.id === id);
-    if(!workflow){
-        res.status(404).json("Not Found");
-    }
-    const steps = workflowSteps.filter((step) => step.workflowId === id).sort((a,b) => a.order - b.order);
-    res.json({...workflow, steps});
-});
-//Deleting a workflow and its steps
-app.delete("/workflows/:id", (req, res) => {
-    const workflowId = req.params.id;
-
-    const workflow = workflows.find((workflow) => workflow.id === workflowId);
-    if(!workflow) return res.status(404).json({message: "Workflow Not Found"});
-    
-    const workflowIndex = workflows.findIndex((workflow) => workflow.id === workflowId);
-    const deletedWorkflow = workflows.splice(workflowIndex, 1)[0];
-
-    const remaingSteps = workflowSteps.filter((step) => step.workflowId !== workflowId);
-    workflowSteps.length = 0;
-    workflowSteps.push(...remaingSteps);
-
-    res.status(200).json({message: "Workflow deleted successfully",
-        deletedWorkflow,
-    });
-});
-
-app.post("/workflows", async(req, res) => {
-    const {name, steps} = req.body;
+app.post("/workflows", async (req, res) => {
+    const { name, steps } = req.body;
     //We first validate the workflow name
-    if(!name || !name.trim()){
-        return res.status(400).json({message: "The name is required"});
+    if (!name || !name.trim()) {
+        return res.status(400).json({ message: "The name is required" });
     }
     //Then we validate steps array
-    if(!Array.isArray(steps) || steps.length === 0){
-        return res.status(400).json({message: "At least one step is required"});
+    if (!Array.isArray(steps) || steps.length === 0) {
+        return res.status(400).json({ message: "At least one step is required" });
     }
     //Then we validate each step title
     const hasInvalidStep = steps.some(
         (step) => !step.title || !step.title.trim()
     );
 
-    if(hasInvalidStep) return res.status(400).json({
+    if (hasInvalidStep) return res.status(400).json({
         message: "Step title is required for each step"
     });
 
@@ -116,154 +87,440 @@ app.post("/workflows", async(req, res) => {
         //We insert a workflow and its steps 
         // into the database now instead of memory arrays
         const newWorkflow = await prisma.workflow.create({
-        data: {
-            name: name.trim(),
-            steps: {
-                create: steps.map((step, index) => ({
-                  title: step.title.trim(),
-                  order: typeof step.order === "number" ? step.order : index +1,  
-                }))
+            data: {
+                name: name.trim(),
+                steps: {
+                    create: steps.map((step, index) => ({
+                        title: step.title.trim(),
+                        order: typeof step.order === "number" ? step.order : index + 1,
+                    }))
+                },
             },
-        },
-        include: { 
-            steps: true,
-        }
-   }) 
+            include: {
+                steps: {
+                    orderBy: {
+                        order: "asc",
+                    }
+                }
+            }
+        })
         return res.status(201).json(newWorkflow);
     }
-    catch(error){
+    catch (error) {
         console.error("Failed to create workflow", error);
 
-        return res.status(500).json({message: "Failed to create workflow"});
+        return res.status(500).json({ message: "Failed to create workflow" });
     }
 
+});
+
+//This route handles calls from fetch("/workflows/[id]") in web browser
+app.get("/workflows/:id", async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const workflow = await prisma.workflow.findUnique({
+            where: {
+                id,
+            },
+            include: {
+                steps: {
+                    orderBy: {
+                        order: "asc",
+                    }
+                }
+            }
+        });
+        if (!workflow) {
+            return res.status(404).json({ message: "Workflow not found" });
+        }
+
+        return res.status(200).json(workflow);
+    }
+    catch (error) {
+        console.error("Failed to fetch workflow", error);
+        return res.status(500).json({ message: "Failed to fetch workflow" });
+    };
+});
+//Patching the workflow/:id
+app.patch("/workflows/:id", async (req, res) => {
+    const { id } = req.params;
+    const { name } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ message: "You must enter a name" });
+
+    try {
+        const existingWorkflow = await prisma.workflow.findUnique({
+            where: {
+                id,
+            },
+        });
+
+        if (!existingWorkflow) return res.status(404).json({ message: "Workflow not found" });
+
+        const workflow = await prisma.workflow.update({
+            where: {
+                id,
+            },
+            data: {
+                name: name.trim(),
+            },
+        });
+        return res.json(workflow);
+    }
+    catch (error) {
+        console.error("Failed to update workflow", error);
+        return res.status(500).json({ message: "Failed to update workflow" });
+    }
+})
+//Deleting a workflow and its steps
+app.delete("/workflows/:id", async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const existingWorkflow = await prisma.workflow.findUnique({
+            where: {
+                id,
+            },
+        });
+        if (!existingWorkflow) return res.status(404).json({ message: "Workflow Not Found" });
+
+        const workflow = await prisma.workflow.delete({
+            where: {
+                id,
+            },
+        })
+        return res.status(200).json({ message: "Workflow deleted successfully", workflow });
+    }
+    catch (error) {
+        console.error("Failed to delete workflow", error);
+        return res.status(500).json({ message: "Failed to delete workflow" });
+    }
 });
 
 //We create a route for new steps.
-app.post("/workflows/:id/steps", (req, res) => {
-    const {id} = req.params;
-    const {title, order} = req.body;
-    //We find the corresponding workflow in the workflows array in the backend
-    const workflow = workflows.find((workflow) => workflow.id ===id);
+app.post("/workflows/:id/steps", async (req, res) => {
+    const { id } = req.params;
+    const { title } = req.body;
 
-    if(!workflow){
-        return res.status(404).json({message:"Workflow not Found"});
+    if (!title || !title.trim()) {
+        return res.status(400).json({ message: "Step title is required" });
     }
-    if(!title || !title.trim()){
-        return res.status(400).json({message:"Step title is required"});
+    //We find the corresponding workflow in the database
+    try {
+        const existingWorkflow = await prisma.workflow.findUnique({
+            where: {
+                id,
+            },
+        });
+        if (!existingWorkflow) return res.status(404).json({ message: "Workflow not found" });
+        //We here find the step with the max order
+        //so that  
+        // the new step order will be max + 1 
+        const lastStep = await prisma.workflowStep.findFirst({
+            where: {
+                workflowId: id,
+            },
+            orderBy: {
+                order: "desc",
+            }
+        });
+
+        const newStep = await prisma.workflowStep.create({
+            data: {
+                title: title.trim(),
+                order: lastStep ? lastStep.order + 1 : 1,
+                workflowId: id,
+            },
+        });
+        return res.status(201).json({ message: "Step created successfully", newStep });
     }
-    //If the workflow exits in the api, we create a new step for that workflow
-    const newStep = {
-        id: `st${workflowSteps.length +1}`,
-        workflowId: id,
-        title: title.trim(),
-        //If the order is not a number, we find the length of the workflowSteps for that id and add 1
-        order: typeof order === "number" ? order : workflowSteps.filter((s) => s.workflowId === id).length + 1,
-    };
-    workflowSteps.push(newStep);
-    res.status(201).json(newStep);
+    catch (error) {
+        console.error("Failed to create step", error);
+        return res.status(500).json({ message: "Failed to create step" });
+    }
 });
-
-//Patching the workflow/:id
-app.patch("/workflows/:id", (req, res) => {
-    const {id} = req.params;
-    const {name} = req.body;
-    const workflow = workflows.find((workflow) => workflow.id === id);
-
-    if(!workflow) return res.status(404).json({message: "No workflow found"});
-    
-    if(!name || !name.trim()) return res.status(404).json({message: "You must enter a name"});
-    workflow.name = name.trim();
-    res.json(workflow);
-})
-
 //This is the route for updating steps
-app.patch("/workflows/:workflowId/steps/:stepId", (req, res) => {
-    const {workflowId, stepId} = req.params;
-    const {title} = req.body;
-    const workflow = workflows.find((workflow) => workflow.id === workflowId);
+app.patch("/workflows/:workflowId/steps/:stepId", async (req, res) => {
+    const { workflowId, stepId } = req.params;
+    const { title } = req.body;
 
-    if(!workflow) return res.status(404).json({message: "No workflow found"});
+    try {
+        if (!title || !title.trim()) return res.status(400).json({ message: "The title is required" });
 
-    const step = workflowSteps.find((step) => step.id === stepId && step.workflowId === workflowId);
-    
-    if(!step) return res.status(404).json({message: "No step found"});
+        const workflow = await prisma.workflow.findUnique({
+            where: {
+                id: workflowId,
+            }
+        });
+        if (!workflow) return res.status(404).json({ message: "Workflow not found" });
 
-    if(!title || !title.trim()) return res.status(404).json({message: "The title is required"});
-    //As we found the workflow and step, now we update the title othe step
-    step.title = title.trim();
-    res.json(step);
+        const step = await prisma.workflowStep.findUnique({
+            where: {
+                id: stepId,
+            },
+        });
+
+        if (!step) return res.status(404).json({ message: "Step not found" });
+
+        if (step.workflowId !== workflowId) return res.status(400).json({
+            message: "This step doesn't belong to this workflow"
+        })
+
+        const updatedStep = await prisma.workflowStep.update({
+            where: {
+                id: stepId,
+            },
+            data: {
+                title: title.trim(),
+            }
+        });
+        return res.status(200).json({ message: "Step updated successfully", updatedStep });
+    }
+    catch (error) {
+        console.error("Unable to update step", error);
+        return res.status(500).json({ message: "Unable to update step" });
+    }
 
 })
+//Delete steps from workflowSteps
+app.delete("/workflows/:workflowId/steps/:stepId", async (req, res) => {
+    const { workflowId, stepId } = req.params;
+    //We check if the specified workflow exists in the the database
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            const workflow = await tx.workflow.findUnique({
+                where: {
+                    id: workflowId,
+                }
+            });
+            if (!workflow) {
+                throw new Error("WORKFLOW_NOT_FOUND");
+            }
+            const step = await tx.workflowStep.findUnique({
+                where: {
+                    id: stepId,
+                }
+            });
+            if (!step) {
+                throw new Error("STEP_NOT_FOUND");
+            }
+
+            if (step.workflowId !== workflowId) {
+                throw new Error("WORKFLOW_MISMATCH");
+            }
+
+            const deletedStep = await tx.workflowStep.delete({
+                where: {
+                    id: stepId,
+                }
+            });
+
+            const remainingSteps = await tx.workflowStep.findMany({
+                where: {
+                    workflowId,
+                },
+                orderBy: {
+                    order: "asc",
+                }
+            });
+            const updatedStep = await Promise.all(
+                remainingSteps.map((step, index) => {
+                    tx.workflowStep.update({
+                        where: {
+                            id: step.id,
+                        },
+                        data: {
+                            order: index + 1,
+                        }
+                    })
+                })
+            );
+            return { deletedStep, updatedStep };
+
+        });
+        return res.status(200).json({
+            message: "Step deleted successfully",
+            deletedStep: result.deletedStep,
+            updatedStep: result.updatedStep,
+        });
+    }
+    catch (error) {
+        if (error instanceof Error) {
+            if (error.message === "WORKFLOW_NOT_FOUND") {
+                return res.status(404).json({ message: "The workflow could not be found" });
+            }
+            if (error.message === "STEP_NOT_FOUND") {
+                return res.status(404).json({ message: "The step could not be found" });
+            }
+            if (error.message === "WORKFLOW_MISMATCH") {
+                return res.status(404).json({ message: "The workflows mismatch" });
+            }
+        }
+        console.error("Failed to delete step", error);
+        return res.status(500).json({ message: "Failed to delete step" });
+    }
+});
 
 //Here we are reordering steps
-app.patch("/workflows/:workflowId/steps/:stepId/move", (req, res) => {
-    const {workflowId, stepId} = req.params;
-    const {direction} = req.body;
+app.patch("/workflows/:workflowId/steps/:stepId/move", async (req, res) => {
+    const { workflowId, stepId } = req.params;
+    const { direction } = req.body;
 
-    const workflow = workflows.find((workflow) => workflow.id === workflowId);
-    if(!workflow) return res.status(404).json({message: "Workflow not found"});
-    
-    const currentStep = workflowSteps.find((step) => step.workflowId === workflowId && step.id === stepId);
-    if(!currentStep) return res.status(404).json({message: "Step not found"});
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            //Validate workflow
+            const workflow = await tx.workflow.findUnique({
+                where: {
+                    id: workflowId,
+                },
+            });
+            if (!workflow) throw new Error("WORKFLOW_NOT_FOUND");
+            //Validate steps
+            const currentStep = await tx.workflowStep.findUnique({
+                where: {
+                    id: stepId,
+                },
+            });
+            if (!currentStep) throw new Error("STEP_NOT_FOUND");
 
-    if(direction !== "up" && direction !== "down") return res.status(400).json({message: "Direction must be 'up' or down' "});
+            if (currentStep.workflowId !== workflowId) {
+                throw new Error("STEP_MISMATCH");
+            }
+            //Validate the direction of the move
+            if (direction !== "up" && direction !== "down") {
+                throw new Error("DIRECTION_MUST_BE_UP_OR_DOWN");
+            }
 
-    const remainderSteps = workflowSteps.filter((step) => step.workflowId === workflowId).sort((a,b) => a.order - b.order);
-    const currentIndex = remainderSteps.findIndex((step) =>  step.id === stepId);
-    if(currentIndex === -1) return res.status(404).json({message: "Index not found"});
-    //We move one step up by swapping the step with it's neigbor up
-    if(direction === "up"){
-        if(currentIndex ===0) return res.status(200).json({message: `Step is already at the top.`});
-        const targetStep = remainderSteps[currentIndex - 1];
-        const tempOrder = currentStep.order;
-        currentStep.order = targetStep.order;
-        targetStep.order = tempOrder;
+            const remainingSteps = await tx.workflowStep.findMany({
+                where: {
+                    workflowId,
+                },
+                orderBy: {
+                    order: "asc",
+                }
+            });
+
+            const currentIndex = remainingSteps.findIndex((step) => step.id === stepId);
+            if (currentIndex === -1) throw new Error("INDEX_NOT_FOUND");
+
+            if (direction === "up") {
+                if (currentIndex === 0) {
+                    return {
+                        move: false,
+                        message: "Step already at the top",
+                        steps: remainingSteps
+                    }
+                }
+                const targetIndex = currentIndex - 1;
+
+
+                const targetStep = remainingSteps[targetIndex];
+
+                const tempOrder = currentStep.order;
+                currentStep.order = targetStep.order;
+                targetStep.order = tempOrder;
+                await tx.workflowStep.update({
+                    where: {
+                        id: stepId,
+                    },
+                    data: {
+                        order: currentStep.order,
+                    }
+
+                });
+                await tx.workflowStep.update({
+                    where: {
+                        id: targetStep.id,
+                    },
+                    data: {
+                        order: targetStep.order,
+                    }
+                });
+                const updatedSteps = await tx.workflowStep.findMany({
+                    where: {
+                        workflowId,
+                    },
+                    orderBy: {
+                        order: "asc",
+                    }
+                })
+                return {
+                    move: true,
+                    message: "Step moved successfully",
+                    steps: updatedSteps,
+                };
+            }
+
+            if (direction === "down") {
+                if (currentIndex === remainingSteps.length - 1) {
+                    return {
+                        move: false,
+                        message: "Step already at the bottom",
+                        steps: remainingSteps,
+                    }
+                }
+                const targetIndex = currentIndex + 1;
+
+                const targetStep = remainingSteps[targetIndex];
+
+                const tempOrder = currentStep.order;
+                currentStep.order = targetStep.order;
+                targetStep.order = tempOrder;
+                await tx.workflowStep.update({
+                    where: {
+                        id: stepId,
+                    },
+                    data: {
+                        order: currentStep.order,
+                    }
+                });
+                await tx.workflowStep.update({
+                    where: {
+                        id: targetStep.id,
+                    },
+                    data: {
+                        order: targetStep.order,
+                    }
+                });
+                const updatedSteps = await tx.workflowStep.findMany({
+                    where: {
+                        workflowId,
+                    },
+                    orderBy: {
+                        order: "asc",
+                    }
+                })
+                return {
+                    move: true,
+                    message: "Step moved successfully",
+                    steps: updatedSteps,
+                };
+            }
+        });
+        return res.status(200).json(result);
     }
-    //We move one step down by swapping the step with it's neigbor down
-     if(direction === "down"){
-        if(currentIndex === remainderSteps.length -1) return res.status(200).json({message: `Step is already at the bottom.`});
-        const targetStep = remainderSteps[currentIndex + 1];
-        const tempOrder = currentStep.order;
-        currentStep.order = targetStep.order;
-        targetStep.order = tempOrder;
+    catch (error) {
+        if (error instanceof Error) {
+            if (error.message === "WORKFLOW_NOT_FOUND") {
+                return res.status(404).json({ message: "Could not find workflow" });
+            }
+            if (error.message === "STEP_NOT_FOUND") {
+                return res.status(404).json({ message: "Could not find step" });
+            }
+            if (error.message === "STEP_MISMATCH") {
+                return res.status(400).json({ message: "This step doesn't belong to this workflow" });
+            }
+            if (error.message === "DIRECTION_MUST_BE_UP_OR_DOWN") {
+                return res.status(400).json({ message: "Direction must be up or down" });
+            }
+            if (error.message === "INDEX_NOT_FOUND") {
+                return res.status(404).json({ message: "Index not found" });
+            }
+        }
+
+        console.error("Failed to move step", error);
+        return res.status(500).json({ message: "Failed to move step" })
     }
-    const reorderedSteps = remainderSteps.filter((step) => step.workflowId === workflowId).sort((a,b) => a.order - b.order);
-    return res.status(200).json({
-        message:`Step move ${direction} successfully`,
-        steps: reorderedSteps,
-    });
-
-});
-
-//Delete steps from workflowSteps
-app.delete("/workflows/:workflowId/steps/:stepId", (req, res) => {
-    const {workflowId, stepId} = req.params;
-
-    //We check if the specified workflow exists in the workflows array
-    const workflow = workflows.find((workflow) => workflow.id === workflowId);
-    if(!workflow) return res.status(404).json({message: "The workflow could not be found"});
-
-    //Since the workflow exists, we now find the index of the step so that we can splice the array at that index
-    const stepIndex = workflowSteps.findIndex((step) => step.id === stepId && step.workflowId === workflowId );
-    if(stepIndex === -1) return res.status(404).json({message: "Step not found"});
-
-    //Since we found the index, then we can now delete the step
-    const deletedStep = workflowSteps[stepIndex];
-    workflowSteps.splice(stepIndex,1);
-
-    //We now filter and sort the remaining steps
-    const remainderSteps = workflowSteps.filter((step) => step.workflowId === workflowId).sort((a,b) => a.order - b.order);
-    //Here we reorder the steps so that there is no gap between orders
-    remainderSteps.forEach((step, index) => {
-        step.order = index + 1;
-    } );
-
-    //Then we send a response message at the frontend
-    res.json({
-        message: "The step was deleted successfully: ",
-        deletedStep,
-    });
 
 });
 
@@ -271,24 +528,23 @@ app.get("/submissions", (req, res) => {
     res.json(submissions);
 })
 
-
 app.post("/submissions", (req, res) => {
-    const {workflowId, answers} = req.body;
+    const { workflowId, answers } = req.body;
     const workflow = workflows.find((workflow) => workflow.id === workflowId);
 
-    if(!workflow) return res.status(404).json({message: "Failed to find workflow"});
+    if (!workflow) return res.status(404).json({ message: "Failed to find workflow" });
     //We validate if the answers exist and is an object, not an array
-    if(!answers || typeof answers !== 'object' || Array.isArray(answers)) {
-        return res.status(404).json({message: "The answer must be an object"});
+    if (!answers || typeof answers !== 'object' || Array.isArray(answers)) {
+        return res.status(404).json({ message: "The answer must be an object" });
     }
     //And we validate that all values in the object are strings
     const allValues = Object.values(answers).every(
         (value) => typeof value === 'string'
     );
-    if(!allValues) return res.status(400).json({message: "All values should be string"});
-    
-    const newSubmission : Submission = {
-        id: `sub${submissions.length +1}`,
+    if (!allValues) return res.status(400).json({ message: "All values should be string" });
+
+    const newSubmission: Submission = {
+        id: `sub${submissions.length + 1}`,
         workflowId,
         answers,
         status: "submitted",
@@ -299,33 +555,33 @@ app.post("/submissions", (req, res) => {
 })
 
 app.patch("/submissions/:id/status", (req, res) => {
-    const {id} = req.params;
-    const {status} = req.body;
+    const { id } = req.params;
+    const { status } = req.body;
 
-    if(!status) return res.status(400).json({message: "Status is required!"});
+    if (!status) return res.status(400).json({ message: "Status is required!" });
 
     const submission = submissions.find((submission) => submission.id === id);
-    if(!submission) return res.status(404).json({message: "No submission found"});
+    if (!submission) return res.status(404).json({ message: "No submission found" });
 
     const stats = ["submitted", "in_review", "approved", "rejected"];
-    if (!stats.includes(status.toLowerCase())){
-        return res.status(400).json({message: "Wrong status sent"});
+    if (!stats.includes(status.toLowerCase())) {
+        return res.status(400).json({ message: "Wrong status sent" });
     }
 
     submission.status = status;
-    
+
     return res.status(200).json({
         message: "Status changed",
         submissions,
     })
-    
+
 })
 
 app.get("/submissions/:id", (req, res) => {
-    const {id} = req.params;
+    const { id } = req.params;
     const submission = submissions.find((submission) => submission.id === id);
 
-    if(!submission) return res.status(404).json({message: "Submission not found"});
+    if (!submission) return res.status(404).json({ message: "Submission not found" });
 
     res.status(200).json(submission);
 })

@@ -1,7 +1,7 @@
 "use client";
 
-import {useState} from "react";
-import {useRouter} from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type MoveStepButtonProps = {
     workflowId: string;
@@ -10,32 +10,32 @@ type MoveStepButtonProps = {
     isLast: boolean;
 };
 
-export default function MoveStepButton({workflowId, stepId, isFirst, isLast} : MoveStepButtonProps){
+export default function MoveStepButton({ workflowId, stepId, isFirst, isLast }: MoveStepButtonProps) {
     const router = useRouter();
 
     const [moving, setMoving] = useState(false);
-    
-    async function handleMove(direction: "up" | "down"){
-        
+
+    async function handleMove(direction: "up" | "down") {
+
         try {
             setMoving(true);
 
             const res = await fetch(`http://localhost:4000/workflows/${workflowId}/steps/${stepId}/move`, {
                 method: "PATCH",
-                headers: {"Content-Type" : "application/json"},
-                body: JSON.stringify({direction,}),
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ direction, }),
             });
-            if(!res.ok) {
+            if (!res.ok) {
                 const text = res.text();
                 throw new Error(`Failed to patch: ${res.status} ${text}`);
             }
-           
+
             router.refresh();
         }
-        catch(error){
-            console.error("Failed to Patch");
+        catch (error) {
+            console.error("Failed to Patch", error);
         }
-        finally{
+        finally {
             setMoving(false);
         }
     }
@@ -55,8 +55,8 @@ export default function MoveStepButton({workflowId, stepId, isFirst, isLast} : M
                 onClick={() => handleMove("down")}
                 disabled={moving || isLast}
                 className="bg-black border rounded text-white px-2"
-            >    
-                Down          
+            >
+                Down
             </button>
         </div>
     )
