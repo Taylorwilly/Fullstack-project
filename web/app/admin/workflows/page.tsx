@@ -59,8 +59,7 @@ export default function Home() {
                                 <li key={workflow.id} className="rounded bg-blue-500 border p-3">
                                     {/* This is the clikable link to the dynamic pages in [id] */}
                                     <Link href={`/admin/workflows/${workflow.id}`} className="font-medium underline">
-                                    {workflow.name}
-                                    
+                                    {workflow.name}                                 
                                     </Link>
 
                                     <div className="text-sm text-red-700">

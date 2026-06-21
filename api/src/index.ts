@@ -324,7 +324,7 @@ app.delete("/workflows/:workflowId/steps/:stepId", async (req, res) => {
                 }
             });
             const updatedStep = await Promise.all(
-                remainingSteps.map((step, index) => {
+                remainingSteps.map((step, index) =>
                     tx.workflowStep.update({
                         where: {
                             id: step.id,
@@ -333,7 +333,7 @@ app.delete("/workflows/:workflowId/steps/:stepId", async (req, res) => {
                             order: index + 1,
                         }
                     })
-                })
+                )
             );
             return { deletedStep, updatedStep };
 
@@ -360,8 +360,7 @@ app.delete("/workflows/:workflowId/steps/:stepId", async (req, res) => {
         return res.status(500).json({ message: "Failed to delete step" });
     }
 });
-
-//Here we are reordering steps
+//Here we are moving a step up or down
 app.patch("/workflows/:workflowId/steps/:stepId/move", async (req, res) => {
     const { workflowId, stepId } = req.params;
     const { direction } = req.body;
@@ -524,68 +523,129 @@ app.patch("/workflows/:workflowId/steps/:stepId/move", async (req, res) => {
 
 });
 
-app.get("/submissions", (req, res) => {
-    res.json(submissions);
-})
-
-app.post("/submissions", (req, res) => {
-    const { workflowId, answers } = req.body;
-    const workflow = workflows.find((workflow) => workflow.id === workflowId);
-
-    if (!workflow) return res.status(404).json({ message: "Failed to find workflow" });
-    //We validate if the answers exist and is an object, not an array
-    if (!answers || typeof answers !== 'object' || Array.isArray(answers)) {
-        return res.status(404).json({ message: "The answer must be an object" });
+app.get("/submissions", async (_req, res) => {
+    try {
+        const submissions = await prisma.submission.findMany({
+            include: {
+                answers: true,
+            },
+        });
+        return res.status(200).json(submissions);
     }
-    //And we validate that all values in the object are strings
-    const allValues = Object.values(answers).every(
-        (value) => typeof value === 'string'
-    );
-    if (!allValues) return res.status(400).json({ message: "All values should be string" });
-
-    const newSubmission: Submission = {
-        id: `sub${submissions.length + 1}`,
-        workflowId,
-        answers,
-        status: "submitted",
-    };
-    submissions.push(newSubmission)
-    console.log("current submission: ", submissions);
-    return res.status(201).json(newSubmission);
+    catch (error) {
+        console.error("No submission found", error);
+        return res.status(500).json({ message: "No submission found" });
+    }
 })
 
-app.patch("/submissions/:id/status", (req, res) => {
+app.post("/submissions", async (req, res) => {
+    const { workflowId, answers } = req.body;
+
+    try {
+        const workflow = await prisma.workflow.findUnique({
+            where: {
+                id: workflowId,
+            }
+        });
+        if (!workflow) return res.status(404).json({ message: "Failed to find workflow" });
+
+        if (!answers || typeof answers !== "object" || Array.isArray(answers)) {
+            return res.status(400).json({ message: "The answer must be an object" });
+        }
+
+        const stringValues = Object.values(answers).every(value => typeof value === 'string');
+        if (!stringValues) return res.status(400).json({ message: "All values should be string" });
+        const validAnswer = answers as Record<string, string>;
+
+        const newSubmission = await prisma.submission.create({
+            data: {
+                workflowId,
+                status: "submitted",
+                answers: {
+                    create: Object.entries(validAnswer).map(([stepId, value]) => ({
+                        value,
+                        step: {
+                            connect: {
+                                id: stepId,
+                            },
+                        },
+                    })),
+                },
+            },
+            include: {
+                answers: true,
+            }
+
+        });
+        return res.status(201).json(newSubmission);
+    }
+    catch (error) {
+        console.log("Failed to submit answer", error);
+        return res.status(500).json("Failed to submit answer");
+    }
+})
+
+app.get("/submissions/:id", async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const submission = await prisma.submission.findUnique({
+            where: {
+                id,
+            },
+            include: {
+                answers: true,
+            }
+        });
+
+        if (!submission) return res.status(404).json({ message: "Submission not found" });
+
+        return res.status(200).json(submission);
+    }
+    catch (error) {
+        console.error("Unable to find the submission", error);
+        return res.status(500).json({ message: "Unable to find the submission" });
+
+    }
+})
+
+app.patch("/submissions/:id/status", async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!status) return res.status(400).json({ message: "Status is required!" });
+    try {
+        if (!status) return res.status(400).json({ message: "Status is required!" });
+        const submission = await prisma.submission.findUnique({
+            where: {
+                id,
+            }
+        })
+        if (!submission) return res.status(404).json({ message: "No submission found" });
 
-    const submission = submissions.find((submission) => submission.id === id);
-    if (!submission) return res.status(404).json({ message: "No submission found" });
+        const stats = ["submitted", "in_review", "approved", "rejected"];
+        if (!stats.includes(status.toLowerCase())) {
+            return res.status(400).json({ message: "Wrong status sent" });
+        }
 
-    const stats = ["submitted", "in_review", "approved", "rejected"];
-    if (!stats.includes(status.toLowerCase())) {
-        return res.status(400).json({ message: "Wrong status sent" });
+        await prisma.submission.update({
+            where: {
+                id,
+            },
+            data: {
+                status
+            }
+        })
+        return res.status(200).json({
+            message: "Status changed",
+            submissions,
+        })
+    }
+    catch (error) {
+        console.error("Failed to update status", error);
+        return res.status(500).json({ message: "Failed to update status" });
     }
 
-    submission.status = status;
-
-    return res.status(200).json({
-        message: "Status changed",
-        submissions,
-    })
-
 })
-
-app.get("/submissions/:id", (req, res) => {
-    const { id } = req.params;
-    const submission = submissions.find((submission) => submission.id === id);
-
-    if (!submission) return res.status(404).json({ message: "Submission not found" });
-
-    res.status(200).json(submission);
-})
-
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

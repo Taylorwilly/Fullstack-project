@@ -2,15 +2,21 @@
 // sees the application status after submission
 
 type Props = {
-    params : Promise<{submissionId: string}>;
+    params: Promise<{ submissionId: string }>;
 }
-type SubmissionStatus = "submitted" | "in_review" |"approved" | "rejected";
+type SubmissionStatus = "submitted" | "in_review" | "approved" | "rejected";
 
 type Submission = {
     id: string;
     workflowId: string;
-    answers: Record<string, string>;
+    answers: submissionAnswer[];
     status: SubmissionStatus;
+}
+
+type submissionAnswer = {
+    id: string,
+    stepId: string,
+    value: string,
 }
 
 type WorkflowStep = {
@@ -20,35 +26,35 @@ type WorkflowStep = {
     order: number;
 }
 type Workflow = {
-    id : string;
+    id: string;
     name: string;
     steps: WorkflowStep[];
 }
 
 //This function helps us to show the first letter of status in capital to the client
 function formatStatus(status: SubmissionStatus) {
-    if(status === "in_review") return "In Review";
+    if (status === "in_review") return "In Review";
     return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 function getStatusMessage(status: SubmissionStatus) {
-   const messages: Record<SubmissionStatus, string> = {
-    submitted: "Your application was received",
-    in_review: "Your application is currently under review...",
-    approved: "Your application has been approved",
-    rejected: "Your application was rejected"
-   }
-   return <p>{messages[status]}</p>
+    const messages: Record<SubmissionStatus, string> = {
+        submitted: "Your application was received",
+        in_review: "Your application is currently under review...",
+        approved: "Your application has been approved",
+        rejected: "Your application was rejected"
+    }
+    return <p>{messages[status]}</p>
 }
 
-export default async function SubmissionPage({params}: Props){
-    const {submissionId} = await params;
+export default async function SubmissionPage({ params }: Props) {
+    const { submissionId } = await params;
 
     const submissionRes = await fetch(`http://localhost:4000/submissions/${submissionId}`, {
         cache: "no-store"
     });
 
-    if(!submissionRes.ok){
+    if (!submissionRes.ok) {
         return (
             <main className="min-h-screen p-8">
                 <div className="mx-auto max-w-2xl">
@@ -63,7 +69,7 @@ export default async function SubmissionPage({params}: Props){
     const workflowRes = await fetch(`http://localhost:4000/workflows/${submission.workflowId}`, {
         cache: "no-store",
     })
-    if(!workflowRes.ok){
+    if (!workflowRes.ok) {
         return (
             <main className="min-h-screen p-8">
                 <div className="mx-auto max-w-2xl">
@@ -73,7 +79,7 @@ export default async function SubmissionPage({params}: Props){
             </main>
         );
     }
-    const workflow: Workflow = await workflowRes.json(); 
+    const workflow: Workflow = await workflowRes.json();
 
     const sortedSteps = [...workflow.steps].sort((a, b) => a.order - b.order);
 
@@ -90,34 +96,34 @@ export default async function SubmissionPage({params}: Props){
                     <div>
                         Workflow: {workflow.name}
                     </div>
-                    
+
                     <div className="text-green-600">
                         Current Status: {formatStatus(submission.status)}
-                    </div>   
+                    </div>
                     <div className="text-green-600">
                         {getStatusMessage(submission.status)}
-                    </div>       
+                    </div>
                 </div>
 
                 <section className="mt-6">
                     <h2 className="font-semibold text-xl">Answers</h2>
-                
+
                     <ul className="mt-4 space-y-3">
                         {
                             sortedSteps.map((step) => {
-                                const answer = submission.answers[step.id];
+                                const answer = submission.answers.find((answer) => answer.stepId === step.id);
 
                                 return (
                                     <li key={step.id} className="rounded border p-4">
                                         <div className="font-semibold">{step.title}</div>
-                                        <div className="mt-1 text-gray-700">{answer || "No answer provided"}</div>
+                                        <div className="mt-1 text-gray-700">{answer?.value ?? "No answer provided"}</div>
                                     </li>
                                 );
                             })
                         }
-                
+
                     </ul>
-                </section>  
+                </section>
             </div>
         </main>
     )
