@@ -9,10 +9,10 @@ type SubmissionStatus = "submitted" | "in_review" | "approved" | "rejected";
 type Submission = {
     id: string;
     workflowId: string;
-    answers: submissionAnswer[];
+    answers: SubmissionAnswer[];
     status: SubmissionStatus;
 }
-type submissionAnswer = {
+type SubmissionAnswer = {
     id: string,
     stepId: string,
     value: string,

@@ -14,42 +14,7 @@ export const prisma = new PrismaClient({ adapter });
 app.use(cors());
 app.use(express.json());
 
-type Submission = {
-    id: string;
-    workflowId: string;
-    status: string;
-    answers: Record<string, string>;
-};
-
-type Workflow = {
-    id: string;
-    name: string;
-}
-
-type WorkflowStep = {
-    id: string;
-    workflowId: string;
-    title: string;
-    order: number;
-};
-
-const workflows = [
-    { id: "w1", name: "Client Onboarding" },
-    { id: "w2", name: "Invoice Processing" }
-];
-
-const workflowSteps = [
-    { id: "st1", workflowId: "w1", title: "Personal Info", order: 1 },
-    { id: "st2", workflowId: "w1", title: "Address", order: 2 },
-    { id: "st3", workflowId: "w1", title: "Upload ID", order: 3 },
-
-    { id: "st4", workflowId: "w2", title: "Business Details", order: 1 },
-    { id: "st5", workflowId: "w2", title: "Invoice Upload", order: 2 }
-];
-
-const submissions: Submission[] = [];
-
-
+//Check if the backend responds
 app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
 });
@@ -523,6 +488,7 @@ app.patch("/workflows/:workflowId/steps/:stepId/move", async (req, res) => {
 
 });
 
+
 app.get("/submissions", async (_req, res) => {
     try {
         const submissions = await prisma.submission.findMany({
@@ -542,20 +508,63 @@ app.post("/submissions", async (req, res) => {
     const { workflowId, answers } = req.body;
 
     try {
+        //Validate workflowId before Prisma uses it
+        if (typeof workflowId !== 'string' || workflowId.trim().length === 0) {
+            return res.status(400).json({ message: "workflowId must be a non-blank string" })
+        }
         const workflow = await prisma.workflow.findUnique({
             where: {
                 id: workflowId,
+            },
+            include: {
+                steps: true,
             }
         });
-        if (!workflow) return res.status(404).json({ message: "Failed to find workflow" });
-
-        if (!answers || typeof answers !== "object" || Array.isArray(answers)) {
-            return res.status(400).json({ message: "The answer must be an object" });
+        //We check if the workflow exists 
+        if (!workflow) return res.status(404).json({
+            message: "Failed to find workflow"
+        });
+        //Reject a workflow with no steps
+        if (workflow.steps.length === 0) {
+            return res.status(400).json({
+                message: "Cannot submit workflow with no steps"
+            });
         }
 
-        const stringValues = Object.values(answers).every(value => typeof value === 'string');
-        if (!stringValues) return res.status(400).json({ message: "All values should be string" });
+        if (!answers || typeof answers !== "object" || Array.isArray(answers)) {
+            return res.status(400).json({
+                message: "The answer must be an object"
+            });
+        }
+
+        const stringValues = Object.values(answers).every(value =>
+            typeof value === 'string' && value.trim().length > 0);
+
+        if (!stringValues) return res.status(400).json({
+            message: "All answers must be non-blank strings"
+        });
+
         const validAnswer = answers as Record<string, string>;
+
+        const submittedStepIds = Object.keys(validAnswer);
+
+        const workflowStepIds = workflow.steps.map(step => step.id);
+
+        //We check if every submitted answer belongs to this workflow
+        const invalidStepIds = submittedStepIds.filter((stepId) =>
+            !workflowStepIds.includes(stepId));
+        //Check if every workflow step belongs to the submitted steps
+        const missingStepIds = workflowStepIds.filter((stepId) =>
+            !submittedStepIds.includes(stepId));
+
+        if (invalidStepIds.length > 0 || missingStepIds.length > 0) {
+            return res.status(400).json({
+                message: "Submitted answers do not match this workflow",
+                missingStepIds,
+                invalidStepIds,
+            });
+
+        }
 
         const newSubmission = await prisma.submission.create({
             data: {
@@ -577,11 +586,15 @@ app.post("/submissions", async (req, res) => {
             }
 
         });
-        return res.status(201).json(newSubmission);
+        return res.status(201).json({
+            message: "Submission succeeded",
+            newSubmission,
+
+        });
     }
     catch (error) {
-        console.log("Failed to submit answer", error);
-        return res.status(500).json("Failed to submit answer");
+        console.error("Failed to submit answer", error);
+        return res.status(500).json({ message: "Failed to submit answer" });
     }
 })
 
@@ -627,17 +640,17 @@ app.patch("/submissions/:id/status", async (req, res) => {
             return res.status(400).json({ message: "Wrong status sent" });
         }
 
-        await prisma.submission.update({
+        const updatedSubmission = await prisma.submission.update({
             where: {
                 id,
             },
             data: {
-                status
+                status: status.toLowerCase()
             }
         })
         return res.status(200).json({
             message: "Status changed",
-            submissions,
+            updatedSubmission,
         })
     }
     catch (error) {
