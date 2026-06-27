@@ -1,6 +1,6 @@
 "use client"
 
-import {useState, useEffect} from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 
@@ -17,11 +17,11 @@ type Workflow = {
     steps: Step[];
 };
 
-export default function SubmissionDefaultPage(){
+export default function SubmissionDefaultPage() {
     const router = useRouter();
     const params = useParams();
-    const workflowId = Array.isArray(params.workflowId) 
-        ? params.workflowId[0] 
+    const workflowId = Array.isArray(params.workflowId)
+        ? params.workflowId[0]
         : params.workflowId;
 
     const [workflow, setWorkflow] = useState<Workflow | null>(null);
@@ -29,82 +29,101 @@ export default function SubmissionDefaultPage(){
     const [loading, setLoading] = useState(true);
     const [answers, setAnswers] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState(false);
-    
+    const [submissionError, setSubmissionError] = useState("");
+
     async function loadWorkflow() {
-        try{
+        try {
             setLoading(true);
             const res = await fetch(`http://localhost:4000/workflows/${workflowId}`);
-            
-            if(!res.ok) throw new Error("Failed to load workflow");
+
+            if (!res.ok) throw new Error("Failed to load workflow");
 
             const data: Workflow = await res.json();
-            const sortedSteps = [...data.steps].sort((a,b) => a.order - b.order);
+            const sortedSteps = [...data.steps].sort((a, b) => a.order - b.order);
 
             setWorkflow({
-                ...data, 
+                ...data,
                 steps: sortedSteps
             });
 
         }
-        catch(error){
+        catch (error) {
             console.error("Fail to load workflow", error);
         }
-        finally{
+        finally {
             setLoading(false);
         }
     }
 
     async function handleSubmission() {
         try {
+            //Remove an old error if the client tries again
+            setSubmissionError("");
+
             setSubmitting(true);
 
-            if(!workflow) return;
+            if (!workflow) return;
 
-            if(Object.keys(answers).length === 0) return;
+            if (Object.keys(answers).length === 0) {
+                setSubmissionError("Please answer every workflow step before submitting");
+                return;
+            };
 
             const allStepAnswered = workflow.steps.every((step) => {
                 const value = answers[step.id];
                 return value && value.trim() !== "";
             })
-            if(!allStepAnswered) return;
+            if (!allStepAnswered) {
+                setSubmissionError("Please answer every workflow step before submitting");
+                return;
+            };
 
             const res = await fetch("http://localhost:4000/submissions", {
                 method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body:JSON.stringify({
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
                     workflowId: workflow.id,
                     answers,
                 })
             });
-            if(!res.ok) throw new Error("Failed to submit the answers");
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || "Failed to submit the answers");
+            }
 
             const createdSubmission = await res.json();
-           
+
             //After submission, we redirect the client to the application status
-            router.push(`/my_submissions/${createdSubmission.id}`);
+            router.push(`/my_submissions/${createdSubmission.newSubmission.id}`);
         }
-        catch(error){
-           console.error("Failed to submit answers", error); 
+        catch (error) {
+            console.error("Failed to submit answers", error);
+            if (error instanceof Error) {
+                setSubmissionError(error.message);
+            }
+            else {
+                setSubmissionError("Something went wrong while submitting your answers");
+            }
         }
-        finally{
+        finally {
             setSubmitting(false);
         }
     }
 
-    useEffect(() =>{
-        if(workflowId) loadWorkflow();
+    useEffect(() => {
+        if (workflowId) loadWorkflow();
 
     }, [workflowId]);
 
-    if(loading) {
+    if (loading) {
         return <main className="min-h-screen p-8">Workflow loading...</main>
     };
 
-    if(!workflow){
+    if (!workflow) {
         return <main className="min-h-screen p-8">No workflow found</main>
     };
 
-    if(workflow.steps.length === 0){
+    if (workflow.steps.length === 0) {
         return (
             <main className="min-h-screen p-8">
                 <div>
@@ -125,14 +144,14 @@ export default function SubmissionDefaultPage(){
 
     const currentStep = workflow.steps[currentStepIndex];
     const isFirstStep = currentStepIndex === 0;
-    const isLastStep = currentStepIndex === workflow.steps.length -1;
+    const isLastStep = currentStepIndex === workflow.steps.length - 1;
 
-    function handlePrevious(){
-        if(isFirstStep) return;
+    function handlePrevious() {
+        if (isFirstStep) return;
         setCurrentStepIndex((prev) => prev - 1);
     };
-    function handleNext(){
-        if(isLastStep) return;
+    function handleNext() {
+        if (isLastStep) return;
         setCurrentStepIndex((prev) => prev + 1);
     };
 
@@ -143,17 +162,17 @@ export default function SubmissionDefaultPage(){
                     {workflow.name}
                 </h1>
                 <p className="text-gray-600 mt-2">
-                    Step {currentStepIndex +1} of {workflow.steps.length}
+                    Step {currentStepIndex + 1} of {workflow.steps.length}
                 </p>
 
                 <div className="rounded border px-3 mt-3">
                     <div className="text-gray-600">Current Step</div>
                     <h2 className="font-semibold">{currentStep.title}</h2>
-                    <input 
+                    <input
                         type="text"
                         value={answers[currentStep.id] || ""}
-                        onChange={(e) => 
-                            setAnswers((prev) =>({
+                        onChange={(e) =>
+                            setAnswers((prev) => ({
                                 ...prev,
                                 [currentStep.id]: e.target.value,
                             }))
@@ -162,6 +181,16 @@ export default function SubmissionDefaultPage(){
                         className="rounded border px-3"
                     />
                 </div>
+                {
+                    submissionError && (
+                        <p
+                            role="alert"
+                            className="mt-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-red-800"
+                        >
+                            {submissionError}
+                        </p>
+                    )
+                }
 
                 <div className="flex gap-3 mt-4">
                     <button
@@ -172,26 +201,26 @@ export default function SubmissionDefaultPage(){
                     >
                         Previous
                     </button>
-                    
+
                     {
                         !isLastStep ?
-                           ( <button
+                            (<button
                                 type="button"
                                 onClick={handleNext}
                                 className="bg-black text-white px-3 py-2 rounded"
                             >
                                 Next
                             </button>
-                           ) : (
+                            ) : (
                                 <button
                                     type="button"
-                                    onClick={handleSubmission}  
-                                    disabled={submitting}                                 
+                                    onClick={handleSubmission}
+                                    disabled={submitting}
                                     className="bg-black text-white px-3 py-2 rounded disabled:opacity-50"
                                 >
                                     {submitting ? "Submitting..." : "Submit"}
                                 </button>
-                           )                          
+                            )
                     }
                 </div>
             </div>

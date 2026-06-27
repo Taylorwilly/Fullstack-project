@@ -3,6 +3,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import * as z from "zod";
+import argon2 from "argon2";
 
 dotenv.config();
 const app = express();
@@ -10,6 +12,58 @@ const adapter = new PrismaPg({
     connectionString: process.env.DATABASE_URL,
 });
 export const prisma = new PrismaClient({ adapter });
+
+//A string is valid only when it contains a least one character
+const nonBlankString = z.string().refine(
+    (value) => value.trim().length > 0,
+    {
+        error: "Must be a non-blank string",
+    }
+);
+//Rules for the body sent to POST /submissions
+const createSubmissionSchema = z.strictObject({
+    workflowId: nonBlankString,
+
+    //The keys are dynamic workflow step IDs.
+    //Every answer value must have a non-blank string.
+    answers: z.record(z.string(), nonBlankString),
+});
+//Rules for the body sent to PATCH /submissions/:id/status
+//A submission begin as "submitted" when it is created.
+//Then an admin can update it only to one of these values.
+const updateSubmissionStatusSchema = z.strictObject({
+    status: z.enum([
+        "in_review",
+        "approved",
+        "rejected"
+    ])
+});
+//Zod id schema
+const submissionIdSchema = z.strictObject({
+    id: z.string().trim().min(1, {
+        error: "Submission id is required",
+    }),
+});
+
+
+const registerUserSchema = z.strictObject({
+    name: z.string().trim()
+        .min(1, { error: "Name cannot be blank" })
+        .max(100, { error: "Name must be 100 characters or fewer" })
+        .optional(),
+
+    email: z.email({ error: "Enter a valid email address" }),
+
+    password: z.string()
+        .min(8, { error: "The password must be 8 characters or more" })
+        .max(100, { error: "The password must be 100 characters or fewer" })
+});
+
+const loginUserSchema = z.strictObject({
+    email: z.email({ error: "Invalid email address" }),
+
+    password: nonBlankString
+})
 
 app.use(cors());
 app.use(express.json());
@@ -19,15 +73,125 @@ app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
 });
 
+
+//Registration route
+app.post("/auth/register", async (req, res) => {
+
+    try {
+        //Validate the request body with Zod
+        const validation = registerUserSchema.safeParse(req.body);
+
+        if (!validation.success) {
+            return res.status(400).json({
+                message: "Invalid registration data",
+                errors: validation.error.issues.map(issue => ({
+                    path: issue.path.join("."),
+                    message: issue.message
+                })),
+            })
+        }
+        const { name, email, password } = validation.data;
+
+        const normalizedEmail = email.toLowerCase();
+        //We check if there is already an existing same email in the database
+        const existingUser = await prisma.user.findUnique({
+            where: {
+                email: normalizedEmail,
+            },
+        });
+
+        if (existingUser) {
+            return res.status(409).json({
+                message: "An account with this email already exists"
+            });
+        }
+        //Hash the password and store it in a variable
+        const passwordHash = await argon2.hash(password);
+
+        //Now we create the user in the database and we do not return the password to client
+        const user = await prisma.user.create({
+            data: {
+                name,
+                email: normalizedEmail,
+                passwordHash,
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                createdAt: true,
+            }
+        });
+        return res.status(201).json({
+            message: "Account created successfully",
+            user,
+        })
+    }
+    catch (error) {
+        console.error("Failed to create account", error);
+        return res.status(500).json({
+            message: "Failed to create account",
+        })
+    }
+});
+
+//Login route
+app.post("/auth/login", async (req, res) => {
+    try {
+        const validation = loginUserSchema.safeParse(req.body);
+        if (!validation.success) {
+            return res.status(400).json({
+                message: "Invalid login data",
+                errors: validation.error.issues.map((issue) => ({
+                    message: issue.message,
+                    path: issue.path.join(".")
+                })),
+            });
+        }
+        const { email, password } = validation.data;
+        const normalizedEmail = email.toLowerCase();
+
+        const existingUser = await prisma.user.findUnique({
+            where: {
+                email: normalizedEmail,
+            }
+        });
+
+        if (!existingUser) return res.status(401).json({ message: "Invalid email or password" });
+
+        const verifiedPassword = await argon2.verify(existingUser.passwordHash, password);
+
+        if (!verifiedPassword) return res.status(401).json({
+            message: "Invalid email or password",
+        });
+
+        return res.status(200).json({ message: "Login succeeds" });
+    }
+    catch (error) {
+        console.error("Failed to login", error);
+
+        return res.status(500).json({ message: "Failed to login" });
+    }
+});
+
 app.get("/workflows", async (_req, res) => {
     //We ask prisma to find workflow in postgres
     //since we migrate from array storage to database storage
-    const workflows = await prisma.workflow.findMany({
-        include: {
-            steps: true,
-        },
-    });
-    res.json(workflows);
+    try {
+        const workflows = await prisma.workflow.findMany({
+            include: {
+                steps: true,
+            },
+        });
+        return res.status(200).json(workflows);
+    }
+    catch (error) {
+        console.error("Failed to fetch workflows", error);
+        return res.status(500).json({
+            message: "Failed to fetch workflows"
+        });
+    }
 });
 app.post("/workflows", async (req, res) => {
     const { name, steps } = req.body;
@@ -488,7 +652,6 @@ app.patch("/workflows/:workflowId/steps/:stepId/move", async (req, res) => {
 
 });
 
-
 app.get("/submissions", async (_req, res) => {
     try {
         const submissions = await prisma.submission.findMany({
@@ -505,13 +668,22 @@ app.get("/submissions", async (_req, res) => {
 })
 
 app.post("/submissions", async (req, res) => {
-    const { workflowId, answers } = req.body;
 
     try {
-        //Validate workflowId before Prisma uses it
-        if (typeof workflowId !== 'string' || workflowId.trim().length === 0) {
-            return res.status(400).json({ message: "workflowId must be a non-blank string" })
+        //Validate the entire request body before prisma uses any of its values
+        const validation = createSubmissionSchema.safeParse(req.body);
+
+        if (!validation.success) {
+            return res.status(400).json({
+                message: "Invalid submission data",
+                errors: validation.error.issues.map((issue) => ({
+                    path: issue.path.join("."),
+                    message: issue.message
+                })),
+            });
         }
+        //Define workflow Id and valid answer after validation by Zod
+        const { workflowId, answers: validAnswer } = validation.data;
         const workflow = await prisma.workflow.findUnique({
             where: {
                 id: workflowId,
@@ -530,22 +702,6 @@ app.post("/submissions", async (req, res) => {
                 message: "Cannot submit workflow with no steps"
             });
         }
-
-        if (!answers || typeof answers !== "object" || Array.isArray(answers)) {
-            return res.status(400).json({
-                message: "The answer must be an object"
-            });
-        }
-
-        const stringValues = Object.values(answers).every(value =>
-            typeof value === 'string' && value.trim().length > 0);
-
-        if (!stringValues) return res.status(400).json({
-            message: "All answers must be non-blank strings"
-        });
-
-        const validAnswer = answers as Record<string, string>;
-
         const submittedStepIds = Object.keys(validAnswer);
 
         const workflowStepIds = workflow.steps.map(step => step.id);
@@ -563,9 +719,7 @@ app.post("/submissions", async (req, res) => {
                 missingStepIds,
                 invalidStepIds,
             });
-
         }
-
         const newSubmission = await prisma.submission.create({
             data: {
                 workflowId,
@@ -584,12 +738,10 @@ app.post("/submissions", async (req, res) => {
             include: {
                 answers: true,
             }
-
         });
         return res.status(201).json({
             message: "Submission succeeded",
             newSubmission,
-
         });
     }
     catch (error) {
@@ -623,11 +775,38 @@ app.get("/submissions/:id", async (req, res) => {
 })
 
 app.patch("/submissions/:id/status", async (req, res) => {
-    const { id } = req.params;
-    const { status } = req.body;
 
     try {
-        if (!status) return res.status(400).json({ message: "Status is required!" });
+        const idValidation = submissionIdSchema.safeParse(req.params);
+        if (!idValidation.success) return res.status(400).json({
+            message: "id must be cuid type",
+            errors: idValidation.error.issues.map((issue) => ({
+                //Shows the id
+                path: issue.path.join("."),
+                //Zod's explanation of what is invalid
+                message: issue.message,
+            })),
+        });
+        const { id } = idValidation.data;
+
+        //Zod validates the json request body before we can use the status
+        //The status are exactly: "in_review", "approved", "rejected"
+        const validation = updateSubmissionStatusSchema.safeParse(req.body);
+
+        //If zod finds an invalid request data, return 400 Bad Request
+        if (!validation.success) return res.status(400).json({
+            message: "Status must be in_review or approved or rejected",
+            errors: validation.error.issues.map((issue) => ({
+                //Shows where the validation problem happened
+                path: issue.path.join("."),
+                //Shows Zod's explanation of the problem
+                message: issue.message,
+            })),
+        });
+        //We use the validated value now
+        const { status } = validation.data
+
+        //Check if a submission exists with the request's id
         const submission = await prisma.submission.findUnique({
             where: {
                 id,
@@ -635,17 +814,12 @@ app.patch("/submissions/:id/status", async (req, res) => {
         })
         if (!submission) return res.status(404).json({ message: "No submission found" });
 
-        const stats = ["submitted", "in_review", "approved", "rejected"];
-        if (!stats.includes(status.toLowerCase())) {
-            return res.status(400).json({ message: "Wrong status sent" });
-        }
-
         const updatedSubmission = await prisma.submission.update({
             where: {
                 id,
             },
             data: {
-                status: status.toLowerCase()
+                status: status,
             }
         })
         return res.status(200).json({

@@ -11,10 +11,22 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  CLIENT @map("client")
+  ADMIN  @map("admin")
+
+  @@map("user_role")
+}
+
 model User {
-  id    String  @id @default(cuid())
-  email String  @unique
-  name  String?
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String?
+  passwordHash String
+  role         Role         @default(CLIENT)
+  submissions  Submission[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 }
 
 model Workflow {
@@ -43,6 +55,7 @@ model Submission {
   userId     String?
   workflowId String
   status     String
+  user       User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
   workflow   Workflow           @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   answers    SubmissionAnswer[]
   createdAt  DateTime           @default(now())
