@@ -1,12 +1,22 @@
-import express from "express";
+
+import express, { type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import * as z from "zod";
 import argon2 from "argon2";
+import * as jwt from "jsonwebtoken";
+
 
 dotenv.config();
+
+//Retrieve the secret token from .env or stop the server if it's not configured
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret) throw new Error("JWT_SECRET not configured");
+const requiredJwtSecret: string = jwtSecret
+
+
 const app = express();
 const adapter = new PrismaPg({
     connectionString: process.env.DATABASE_URL,
@@ -45,7 +55,6 @@ const submissionIdSchema = z.strictObject({
     }),
 });
 
-
 const registerUserSchema = z.strictObject({
     name: z.string().trim()
         .min(1, { error: "Name cannot be blank" })
@@ -65,6 +74,89 @@ const loginUserSchema = z.strictObject({
     password: nonBlankString
 })
 
+//Describe the identity information we place inside a verified JWT
+type AuthenticatedUser = {
+    userId: string;
+    role: string;
+};
+
+//Add an optional typescript declaration-merging block
+//It's job is to tell typescript that Express Request object 
+//are allowed to have authenticatedUser? : AuthenticatedUser
+declare global {
+    namespace Express {
+        interface Request {
+            authenticatedUser?: AuthenticatedUser;
+        }
+    }
+}
+
+//This middleware check the authentication of user
+//It checks the JWT sent in the authorization header
+//If the token is valid, it attaches the user's verified identity to req
+//and calls next() so express can continue to the next protected route
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+    //Read the authorization header sent with the request
+    //Expected format: Authorization: Bearer <token>
+    const authorizationHeader = req.headers.authorization;
+    //Stop the request if no token was sent or does not meet the required format
+    if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
+        return res.status(401).json({
+            message: "Authentication token is required",
+        })
+    }
+    //Split "Bearer <token>" and take the second element which is the token
+    const token = authorizationHeader.split(" ")[1];
+
+    try {
+        //Verify that the token was signed by this backend JWT secret and has not expired
+        const decodedToken = jwt.verify(token, requiredJwtSecret);
+
+        if (typeof decodedToken !== "object"
+            || decodedToken === null
+            || typeof decodedToken.userId !== "string"
+            || typeof decodedToken.role !== "string") {
+            return res.status(401).json({
+                message: "Invalid authentication token",
+            })
+        }
+        //Create a typed object containing only the identity data that protected routes need
+        const authenticatedUser: AuthenticatedUser = {
+            userId: decodedToken.userId,
+            role: decodedToken.role,
+        };
+        //Attached the verified identify to this specific request
+        //that we will pass to the next function in the route
+        req.authenticatedUser = authenticatedUser;
+        //Authentication succeeded, so continue to the next route
+        return next();
+    }
+    catch (error) {
+        //jwt.verify throws when the token is expired, //
+        // modified, malformed or signed with different secret
+        console.error("Invalid or expired token", error);
+
+        return res.status(401).json({
+            message: "Invalid or expired token"
+        })
+    }
+};
+
+//Text the authenticator
+app.get("/auth/test", requireAuth, (req, res) => {
+    if (!req.authenticatedUser) {
+        return res.status(401).json({ message: "Authentication token is required" });
+    }
+
+    const userId = req.authenticatedUser.userId;
+    const role = req.authenticatedUser.role;
+    return res.status(200).json({
+        message: "Authentication succeeded",
+        userId,
+        role,
+    });
+});
+
 app.use(cors());
 app.use(express.json());
 
@@ -72,7 +164,6 @@ app.use(express.json());
 app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
 });
-
 
 //Registration route
 app.post("/auth/register", async (req, res) => {
@@ -165,8 +256,16 @@ app.post("/auth/login", async (req, res) => {
         if (!verifiedPassword) return res.status(401).json({
             message: "Invalid email or password",
         });
-
-        return res.status(200).json({ message: "Login succeeds" });
+        //Generate the sign in token
+        const token = jwt.sign(
+            { userId: existingUser.id, role: existingUser.role },
+            jwtSecret,
+            { expiresIn: "1h" }
+        );
+        return res.status(200).json({
+            message: "Login succeeds",
+            token
+        });
     }
     catch (error) {
         console.error("Failed to login", error);
@@ -667,7 +766,13 @@ app.get("/submissions", async (_req, res) => {
     }
 })
 
-app.post("/submissions", async (req, res) => {
+app.post("/submissions", requireAuth, async (req, res) => {
+
+    if (!req.authenticatedUser) {
+        return res.status(401).json({ message: "Authentication token is required" })
+    }
+
+    const userId = req.authenticatedUser.userId;
 
     try {
         //Validate the entire request body before prisma uses any of its values
@@ -722,6 +827,7 @@ app.post("/submissions", async (req, res) => {
         }
         const newSubmission = await prisma.submission.create({
             data: {
+                userId,
                 workflowId,
                 status: "submitted",
                 answers: {
