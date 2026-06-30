@@ -23,7 +23,7 @@ const adapter = new PrismaPg({
 });
 export const prisma = new PrismaClient({ adapter });
 
-//A string is valid only when it contains a least one character
+//A string is valid only when it contains at least one character
 const nonBlankString = z.string().refine(
     (value) => value.trim().length > 0,
     {
@@ -141,6 +141,22 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
         })
     }
 };
+
+//This middleware function checks if the person logged-in is an admin
+function requireAdmin(req: Request, res: Response, next: NextFunction) {
+    if (!req.authenticatedUser) {
+        return res.status(401).json({
+            message: "Authentication is required",
+        })
+    }
+
+    if (req.authenticatedUser.role !== "ADMIN") {
+        return res.status(403).json({
+            message: "Access forbidden"
+        })
+    }
+    return next();
+}
 
 //Text the authenticator
 app.get("/auth/test", requireAuth, (req, res) => {
@@ -274,9 +290,9 @@ app.post("/auth/login", async (req, res) => {
     }
 });
 
-app.get("/workflows", async (_req, res) => {
+app.get("/workflows", async (req, res) => {
     //We ask prisma to find workflow in postgres
-    //since we migrate from array storage to database storage
+    //since we migrate from array storage to database 
     try {
         const workflows = await prisma.workflow.findMany({
             include: {
@@ -292,7 +308,10 @@ app.get("/workflows", async (_req, res) => {
         });
     }
 });
-app.post("/workflows", async (req, res) => {
+
+//Route for creating workflows
+app.post("/workflows", requireAuth, requireAdmin, async (req, res) => {
+
     const { name, steps } = req.body;
     //We first validate the workflow name
     if (!name || !name.trim()) {
@@ -370,13 +389,18 @@ app.get("/workflows/:id", async (req, res) => {
         return res.status(500).json({ message: "Failed to fetch workflow" });
     };
 });
-//Patching the workflow/:id
-app.patch("/workflows/:id", async (req, res) => {
+//Patching the protected workflow/:id 
+//Only the admin can update the workflows
+app.patch("/workflows/:id", requireAuth, requireAdmin, async (req, res) => {
     const { id } = req.params;
     const { name } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ message: "You must enter a name" });
 
     try {
+        if (typeof id !== "string") {
+            return res.status(400).json({ message: "Workflow Id must be a string" })
+        }
+        //Make sure the workflow exits before updating it
         const existingWorkflow = await prisma.workflow.findUnique({
             where: {
                 id,
@@ -401,10 +425,13 @@ app.patch("/workflows/:id", async (req, res) => {
     }
 })
 //Deleting a workflow and its steps
-app.delete("/workflows/:id", async (req, res) => {
+app.delete("/workflows/:id", requireAuth, requireAdmin, async (req, res) => {
     const { id } = req.params;
 
     try {
+        if (typeof id !== "string") {
+            return res.status(400).json({ message: "Workflow Id must be a string" })
+        }
         const existingWorkflow = await prisma.workflow.findUnique({
             where: {
                 id,
@@ -426,7 +453,7 @@ app.delete("/workflows/:id", async (req, res) => {
 });
 
 //We create a route for new steps.
-app.post("/workflows/:id/steps", async (req, res) => {
+app.post("/workflows/:id/steps", requireAuth, requireAdmin, async (req, res) => {
     const { id } = req.params;
     const { title } = req.body;
 
@@ -435,12 +462,17 @@ app.post("/workflows/:id/steps", async (req, res) => {
     }
     //We find the corresponding workflow in the database
     try {
+        if (typeof id !== "string") {
+            return res.status(400).json({ message: "Workflow Id must be a string" })
+        }
         const existingWorkflow = await prisma.workflow.findUnique({
             where: {
                 id,
             },
         });
-        if (!existingWorkflow) return res.status(404).json({ message: "Workflow not found" });
+        if (!existingWorkflow) return res.status(404).json({
+            message: "Workflow not found"
+        });
         //We here find the step with the max order
         //so that  
         // the new step order will be max + 1 
@@ -467,12 +499,15 @@ app.post("/workflows/:id/steps", async (req, res) => {
         return res.status(500).json({ message: "Failed to create step" });
     }
 });
-//This is the route for updating steps
-app.patch("/workflows/:workflowId/steps/:stepId", async (req, res) => {
+//Admin can edit workflow steps
+app.patch("/workflows/:workflowId/steps/:stepId", requireAuth, requireAdmin, async (req, res) => {
     const { workflowId, stepId } = req.params;
     const { title } = req.body;
 
     try {
+        if (typeof stepId !== "string" || typeof workflowId !== "string") {
+            return res.status(400).json({ message: "Workflow Id must be a string" })
+        }
         if (!title || !title.trim()) return res.status(400).json({ message: "The title is required" });
 
         const workflow = await prisma.workflow.findUnique({
@@ -490,6 +525,7 @@ app.patch("/workflows/:workflowId/steps/:stepId", async (req, res) => {
 
         if (!step) return res.status(404).json({ message: "Step not found" });
 
+        //Prevent using a step from another workflow
         if (step.workflowId !== workflowId) return res.status(400).json({
             message: "This step doesn't belong to this workflow"
         })
@@ -511,10 +547,13 @@ app.patch("/workflows/:workflowId/steps/:stepId", async (req, res) => {
 
 })
 //Delete steps from workflowSteps
-app.delete("/workflows/:workflowId/steps/:stepId", async (req, res) => {
+app.delete("/workflows/:workflowId/steps/:stepId", requireAuth, requireAdmin, async (req, res) => {
     const { workflowId, stepId } = req.params;
     //We check if the specified workflow exists in the the database
     try {
+        if (typeof stepId !== "string" || typeof workflowId !== "string") {
+            return res.status(400).json({ message: "Workflow Id must be a string" })
+        }
         const result = await prisma.$transaction(async (tx) => {
             const workflow = await tx.workflow.findUnique({
                 where: {
@@ -589,11 +628,15 @@ app.delete("/workflows/:workflowId/steps/:stepId", async (req, res) => {
     }
 });
 //Here we are moving a step up or down
-app.patch("/workflows/:workflowId/steps/:stepId/move", async (req, res) => {
+app.patch("/workflows/:workflowId/steps/:stepId/move", requireAuth, requireAdmin, async (req, res) => {
     const { workflowId, stepId } = req.params;
     const { direction } = req.body;
 
     try {
+        if (typeof stepId !== "string" || typeof workflowId !== "string") {
+            return res.status(400).json({ message: "Workflow Id must be a string" })
+        }
+
         const result = await prisma.$transaction(async (tx) => {
             //Validate workflow
             const workflow = await tx.workflow.findUnique({
@@ -751,9 +794,20 @@ app.patch("/workflows/:workflowId/steps/:stepId/move", async (req, res) => {
 
 });
 
-app.get("/submissions", async (_req, res) => {
+//Submission list page route protected from view
+app.get("/submissions", requireAuth, async (req, res) => {
+
+    if (!req.authenticatedUser) {
+        return res.status(401).json({
+            message: "Authentication token is required"
+        });
+    }
+    const userId = req.authenticatedUser.userId;
     try {
         const submissions = await prisma.submission.findMany({
+            where: {
+                userId,
+            },
             include: {
                 answers: true,
             },
@@ -761,15 +815,34 @@ app.get("/submissions", async (_req, res) => {
         return res.status(200).json(submissions);
     }
     catch (error) {
-        console.error("No submission found", error);
-        return res.status(500).json({ message: "No submission found" });
+        console.error("Failed to retrieve submissions", error);
+        return res.status(500).json({ message: "Failed to retrieve submissions" });
     }
 })
 
+//Admin submissions route
+app.get("/admin/submissions", requireAuth, requireAdmin, async (_req, res) => {
+    try {
+        const submissions = await prisma.submission.findMany({
+            include: {
+                answers: true,
+            }
+        })
+        return res.status(200).json(submissions);
+    }
+    catch (error) {
+        console.error("Failed to retrieve submissions", error);
+        return res.status(500).json({
+            message: "Failed to retrieve submissions",
+        })
+    }
+})
+
+//Submission protected
 app.post("/submissions", requireAuth, async (req, res) => {
 
     if (!req.authenticatedUser) {
-        return res.status(401).json({ message: "Authentication token is required" })
+        return res.status(401).json({ message: "Authentication token is required" });
     }
 
     const userId = req.authenticatedUser.userId;
@@ -856,19 +929,30 @@ app.post("/submissions", requireAuth, async (req, res) => {
     }
 })
 
-app.get("/submissions/:id", async (req, res) => {
-    const { id } = req.params;
+//Submission detail page protected from view
+//Only the owner should be able to open it
+app.get("/submissions/:id", requireAuth, async (req, res) => {
+    if (!req.authenticatedUser) {
+        return res.status(401).json({ message: "Authentication token is required" });
+    }
+    const userId = req.authenticatedUser.userId;
+    const submissionId = req.params.id;
+    if (typeof submissionId !== "string") {
+        return res.status(400).json({ message: "Invalid submission ID" });
+    }
 
     try {
-        const submission = await prisma.submission.findUnique({
+        const submission = await prisma.submission.findFirst({
             where: {
-                id,
+                //Match both the submission and its owner
+                id: submissionId,
+                userId
             },
             include: {
                 answers: true,
             }
         });
-
+        //Also returns 404 when the submission belongs to someone else
         if (!submission) return res.status(404).json({ message: "Submission not found" });
 
         return res.status(200).json(submission);
@@ -880,7 +964,8 @@ app.get("/submissions/:id", async (req, res) => {
     }
 })
 
-app.patch("/submissions/:id/status", async (req, res) => {
+//Only an admin can update the status
+app.patch("/submissions/:id/status", requireAuth, requireAdmin, async (req, res) => {
 
     try {
         const idValidation = submissionIdSchema.safeParse(req.params);
