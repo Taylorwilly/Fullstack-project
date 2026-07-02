@@ -1,58 +1,61 @@
 "use client"
-import {useState} from "react";
-import {useRouter} from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type EditWorkflowProps = {
     workflowId: string;
     currentName: string;
 };
 
-export default function EditWorkflow({workflowId, currentName}: EditWorkflowProps) {
+export default function EditWorkflow({ workflowId, currentName }: EditWorkflowProps) {
     const router = useRouter();
 
     const [isEditing, setIsEditing] = useState(false);
     const [name, setName] = useState(currentName);
     const [saving, setSaving] = useState(false);
 
-    function handleStartEdit(){
+    function handleStartEdit() {
         setName(currentName);
         setIsEditing(true);
     }
-    function handleCancelEdit(){
+    function handleCancelEdit() {
         setName(currentName);
         setIsEditing(false);
     }
-    async function handleSave(){
-        if(!name.trim()) return;
-        try{
+    async function handleSave() {
+        if (!name.trim()) return;
+        try {
             setSaving(true);
+
+            const token = localStorage.getItem("token");
 
             const res = await fetch(`http://localhost:4000/workflows/${workflowId}`, {
                 method: "PATCH",
-                headers:{
-                    "Content-Type" : "application/json",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     name,
                 })
             })
-            if(!res.ok){
+            if (!res.ok) {
                 const text = await res.text();
                 throw new Error(`Failed to patch: ${res.status} ${text}`);
             }
             setIsEditing(false);
             router.refresh();
         }
-        catch(error){
+        catch (error) {
             console.error("Failed to patch data", error);
         }
-        finally{
+        finally {
             setSaving(false);
         }
 
     }
-    
-    if(!isEditing){
+
+    if (!isEditing) {
         return (
             <div>
                 <p className="px-2 text-xl">{currentName}</p>
@@ -60,9 +63,9 @@ export default function EditWorkflow({workflowId, currentName}: EditWorkflowProp
                     type="button"
                     onClick={handleStartEdit}
                     className="bg-black rounded text-white px-2"
-             >
+                >
                     Edit
-                 </button>
+                </button>
             </div>
         )
     }

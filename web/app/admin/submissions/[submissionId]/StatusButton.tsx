@@ -1,42 +1,46 @@
 'use client';
 
-import {useState} from 'react';
-import {useRouter} from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
-type SubmissionStatus = "submitted" | "in_review" |"approved" | "rejected";
+type SubmissionStatus = "submitted" | "in_review" | "approved" | "rejected";
 
 type StatusButtonProps = {
     submissionId: string;
     currentStatus: SubmissionStatus;
-    
+
 }
 
-export default function StatusButton({submissionId, currentStatus}: StatusButtonProps) {
+export default function StatusButton({ submissionId, currentStatus }: StatusButtonProps) {
     const router = useRouter();
 
     const [updatingStatus, setUpdatingStatus] = useState<SubmissionStatus | null>(null);
 
-    async function handleStatusChange(newStatus:SubmissionStatus){
-        try{
+    async function handleStatusChange(newStatus: SubmissionStatus) {
+        try {
             setUpdatingStatus(newStatus);
+
+            const token = localStorage.getItem("token");
+
             const res = await fetch(`http://localhost:4000/submissions/${submissionId}/status`, {
                 method: 'PATCH',
                 headers: {
                     "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
                 },
                 body: JSON.stringify({
-                    status : newStatus,                
+                    status: newStatus,
                 }),
             });
 
-            if(!res.ok) throw new Error("No submission found");    
-         
+            if (!res.ok) throw new Error("No submission found");
+
             router.refresh();
         }
-        catch(error){
+        catch (error) {
             console.error("No submission found", error);
         }
-        finally{
+        finally {
             setUpdatingStatus(null);
         }
     }
@@ -54,10 +58,10 @@ export default function StatusButton({submissionId, currentStatus}: StatusButton
             </button>
 
             <button
-                 type="button"
-                 onClick={() => handleStatusChange("approved")}
-                 disabled={updatingStatus !== null || currentStatus === "approved"}
-                 className='rounded bg-black text-white px-3 py-2 disabled:opacity-50'
+                type="button"
+                onClick={() => handleStatusChange("approved")}
+                disabled={updatingStatus !== null || currentStatus === "approved"}
+                className='rounded bg-black text-white px-3 py-2 disabled:opacity-50'
             >
                 {updatingStatus === "approved" ? "Updating..." : "Approved"}
             </button>

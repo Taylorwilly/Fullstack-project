@@ -39,3 +39,15 @@ export default function WorkflowPage() {
         }
 
     }
+    useEffect(() => {
+        loadWorkflow();
+    }, []);
+
+    return (
+        <section>
+            <div>
+                
+            </div>
+        </section>
+    )
+}

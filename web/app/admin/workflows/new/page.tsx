@@ -1,8 +1,8 @@
 "use client";
 
-import  {useRouter} from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {useState, SubmitEvent} from "react";
+import { useState, SubmitEvent } from "react";
 //This is for unsaved data that are still in the frontend
 type DraftStep = {
     title: string;
@@ -14,18 +14,19 @@ type CreatedWorkflow = {
     steps: DraftStep[];
 }
 
-export default function NewWorkflowPage(){
+export default function NewWorkflowPage() {
     const router = useRouter();
 
     const [name, setName] = useState("");
     const [stepTitle, setStepTitle] = useState("");
     const [steps, setSteps] = useState<DraftStep[]>([]);
     const [submitting, setSubmitting] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
 
-    function handleAddStep(){
-        if(!stepTitle.trim()) return;
+    function handleAddStep() {
+        if (!stepTitle.trim()) return;
         //We create a new step and add it to the array steps
-        const newStep : DraftStep = {
+        const newStep: DraftStep = {
             title: stepTitle.trim(),
             order: steps.length + 1,
         };
@@ -33,47 +34,59 @@ export default function NewWorkflowPage(){
         setStepTitle("");
     }
     //Here we remove a step and update other steps orders
-    function handleRemoveStep(order: number){
+    function handleRemoveStep(order: number) {
         const updated = steps.filter((step) => step.order !== order).map((step, index) => (
             //we preserve the old properties and update the order starting at index 0
             {
                 ...step,
-                order: index +1,
+                order: index + 1,
             }
         ));
         setSteps(updated);
     }
 
-    async function handleSubmit(e: SubmitEvent){
+    async function handleSubmit(e: SubmitEvent) {
         e.preventDefault();
 
-        if(!name.trim()){
+        if (!name.trim()) {
             return;
         }
-        
-        try{
+
+
+        try {
             setSubmitting(true);
+            setErrorMessage("");
+
+            const token = localStorage.getItem("token");
             const res = await fetch("http://localhost:4000/workflows", {
                 method: "POST",
                 headers: {
                     "content-type": "application/json",
+                    "Authorization": `Bearer ${token}`,
                 },
                 body: JSON.stringify({
                     name: name.trim(),
                     steps,
                 }),
             });
-            if(!res.ok){
-                throw new Error("Failed to create workflow");
+            if (!res.ok) {
+                const errorData = await res.json();
+                setErrorMessage(errorData.message || "Failed to create workflow");
             }
             const createdWorkflow: CreatedWorkflow = await res.json();
 
             router.push(`/admin/workflows/${createdWorkflow.id}`);
         }
-        catch(error){
+        catch (error) {
             console.error("Failed to create workflow", error);
+            if (error instanceof Error) {
+                setErrorMessage(error.message);
+            }
+            else {
+                setErrorMessage("Something went wrong while creating workflow");
+            }
         }
-        finally{
+        finally {
             setSubmitting(false);
         }
 
@@ -96,10 +109,10 @@ export default function NewWorkflowPage(){
                         <label className="block text-xl font-medium">
                             Workflow Name
                         </label>
-                        <input 
+                        <input
                             type="text"
                             placeholder="Enter workflow name here"
-                            value= {name}
+                            value={name}
                             onChange={(e) => setName(e.target.value)}
                             className="mt-2 w-full rounded border px-3 py-2"
                         />
@@ -107,20 +120,20 @@ export default function NewWorkflowPage(){
                     <div className="rounded border p-4">
                         <h2 className="text-xl font-semibold">Steps</h2>
                         <div className="mt-4 flex gap-3">
-                            <input 
+                            <input
                                 type="text"
                                 placeholder="Insert the step here"
                                 value={stepTitle}
                                 onChange={(e) => setStepTitle(e.target.value)}
                                 className="flex-1 rounded border px-3 py-2"
                             />
-                            <button type="button" 
-                                    onClick={handleAddStep}
-                                    className="bg-black text-white rounded px-4 py-2" >
-                                Add Step  
+                            <button type="button"
+                                onClick={handleAddStep}
+                                className="bg-black text-white rounded px-4 py-2" >
+                                Add Step
                             </button>
                         </div>
-                        
+
                         {
                             steps.length === 0 ? (
                                 <p className="mt-4 text-sm text-gray-600">No steps added yet</p>
@@ -144,12 +157,23 @@ export default function NewWorkflowPage(){
                             )
                         }
                     </div>
-                    <button 
-                        type="submit" 
+                    <button
+                        type="submit"
                         disabled={submitting}
                         className="rounded bg-black px-4 py-2 text-white disabled:opacity-50">
                         {submitting ? "Creating..." : "Create Workflow"}
                     </button>
+
+                    {
+                        errorMessage && (
+                            <p
+                                role="alert"
+                                className="mt-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-red-800"
+                            >
+                                {errorMessage}
+                            </p>
+                        )
+                    }
 
                 </form>
 

@@ -6,7 +6,6 @@ import DeleteStepButton from "./DeleteStepButton";
 import EditStepButton from "./EditStepButton";
 import EditWorkflow from "./EditWorkFlowName";
 import MoveStepButton from "./MoveStepButtons";
-import Link from "next/link";
 
 type Props = {
     params: Promise<{ id: string }>;

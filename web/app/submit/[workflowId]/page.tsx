@@ -34,11 +34,14 @@ export default function SubmissionDefaultPage() {
     async function loadWorkflow() {
         try {
             setLoading(true);
-            const res = await fetch(`http://localhost:4000/workflows/${workflowId}`);
+            const response = await fetch(`http://localhost:4000/workflows/${workflowId}`);
 
-            if (!res.ok) throw new Error("Failed to load workflow");
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || "Failed to load workflow");
+            }
 
-            const data: Workflow = await res.json();
+            const data: Workflow = await response.json();
             const sortedSteps = [...data.steps].sort((a, b) => a.order - b.order);
 
             setWorkflow({
@@ -49,6 +52,13 @@ export default function SubmissionDefaultPage() {
         }
         catch (error) {
             console.error("Fail to load workflow", error);
+
+            if (error instanceof Error) {
+                setSubmissionError(error.message);
+            }
+            else {
+                setSubmissionError("Fail to load workflow");
+            }
         }
         finally {
             setLoading(false);
@@ -78,9 +88,14 @@ export default function SubmissionDefaultPage() {
                 return;
             };
 
+            const token = localStorage.getItem("token");
+
             const res = await fetch("http://localhost:4000/submissions", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                },
                 body: JSON.stringify({
                     workflowId: workflow.id,
                     answers,
@@ -98,6 +113,7 @@ export default function SubmissionDefaultPage() {
         }
         catch (error) {
             console.error("Failed to submit answers", error);
+
             if (error instanceof Error) {
                 setSubmissionError(error.message);
             }

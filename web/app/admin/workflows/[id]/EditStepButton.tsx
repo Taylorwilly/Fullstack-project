@@ -30,10 +30,13 @@ export default function EditStepButton({ workflowId, stepId, currentTitle }: Edi
         try {
             setSaving(true);
 
+            const token = localStorage.getItem("token");
+
             const res = await fetch(`http://localhost:4000/workflows/${workflowId}/steps/${stepId}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
                 },
                 body: JSON.stringify({
                     title,

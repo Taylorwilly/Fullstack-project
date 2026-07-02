@@ -102,7 +102,7 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
     //Stop the request if no token was sent or does not meet the required format
     if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
         return res.status(401).json({
-            message: "Authentication token is required",
+            message: "Authentication token is required for client",
         })
     }
     //Split "Bearer <token>" and take the second element which is the token
@@ -276,17 +276,25 @@ app.post("/auth/login", async (req, res) => {
         const token = jwt.sign(
             { userId: existingUser.id, role: existingUser.role },
             jwtSecret,
-            { expiresIn: "1h" }
+            { expiresIn: "1h" },
         );
         return res.status(200).json({
             message: "Login succeeds",
-            token
+            token,
+            user: {
+                id: existingUser.id,
+                name: existingUser.name,
+                email: existingUser.email,
+                role: existingUser.role,
+            },
         });
     }
     catch (error) {
         console.error("Failed to login", error);
 
-        return res.status(500).json({ message: "Failed to login" });
+        return res.status(500).json({
+            message: "Failed to login"
+        });
     }
 });
 
@@ -311,7 +319,6 @@ app.get("/workflows", async (req, res) => {
 
 //Route for creating workflows
 app.post("/workflows", requireAuth, requireAdmin, async (req, res) => {
-
     const { name, steps } = req.body;
     //We first validate the workflow name
     if (!name || !name.trim()) {
@@ -386,6 +393,7 @@ app.get("/workflows/:id", async (req, res) => {
     }
     catch (error) {
         console.error("Failed to fetch workflow", error);
+
         return res.status(500).json({ message: "Failed to fetch workflow" });
     };
 });

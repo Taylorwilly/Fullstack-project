@@ -38,8 +38,13 @@ function formatStatus(status: SubmissionStatus) {
 export default async function SubmissionPage({ params }: Props) {
     const { submissionId } = await params;
 
+    const token = localStorage.getItem("token");
+
     const submissionRes = await fetch(`http://localhost:4000/submissions/${submissionId}`, {
-        cache: "no-store"
+        cache: "no-store",
+        headers: {
+            "Authorization": `Bearer ${token}`
+        },
     });
 
     if (!submissionRes.ok) {
@@ -59,6 +64,9 @@ export default async function SubmissionPage({ params }: Props) {
 
     const workflowRes = await fetch(`http://localhost:4000/workflows/${submission.workflowId}`, {
         cache: "no-store",
+        headers: {
+            "Authorization": `Bearer ${token}`
+        },
     })
     if (!workflowRes.ok) {
         return (

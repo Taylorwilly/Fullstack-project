@@ -50,8 +50,13 @@ function getStatusMessage(status: SubmissionStatus) {
 export default async function SubmissionPage({ params }: Props) {
     const { submissionId } = await params;
 
+    const token = localStorage.getItem("token");
+
     const submissionRes = await fetch(`http://localhost:4000/submissions/${submissionId}`, {
-        cache: "no-store"
+        cache: "no-store",
+        headers: {
+            "Authorization": `Bearer ${token}`
+        },
     });
 
     if (!submissionRes.ok) {

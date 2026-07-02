@@ -17,8 +17,10 @@ type SubmissionAnswer = {
 export default async function AdminSubmissionsPage() {
 
 
+
     const res = await fetch("http://localhost:4000/submissions", {
         cache: "no-store",
+
     });
 
     if (!res.ok) {
