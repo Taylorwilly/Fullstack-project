@@ -22,7 +22,7 @@ export default function MoveStepButton({ workflowId, stepId, isFirst, isLast }: 
 
             const token = localStorage.getItem("token");
 
-            const res = await fetch(`http://localhost:4000/workflows/${workflowId}/steps/${stepId}/move`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workflows/${workflowId}/steps/${stepId}/move`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",

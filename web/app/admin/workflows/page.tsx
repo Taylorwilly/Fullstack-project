@@ -21,7 +21,7 @@ export default function WorkflowPage() {
 
             setLoading(true);
 
-            const response = await fetch(`http://localhost:4000/workflows`);
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workflows`);
 
             if (!response.ok) {
                 throw new Error("Unable to load workflows");
@@ -141,7 +141,6 @@ export default function WorkflowPage() {
                                         }
                                     </ul>
                                 </div>
-
                             )
                 }
             </section>

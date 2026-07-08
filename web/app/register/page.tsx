@@ -1,6 +1,5 @@
 'use client';
 
-
 import { useState, SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 
@@ -35,7 +34,7 @@ export default function RegisterPage() {
                 return;
             }
 
-            const res = await fetch("http://localhost:4000/auth/register", {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
                 method: "POST",
                 headers: {
                     "content-type": "application/json"
@@ -50,7 +49,7 @@ export default function RegisterPage() {
                 const errorData = await res.json();
                 throw new Error(errorData.message || "Failed to register");
             }
-            router.push("/login")
+            router.push("/login");
         }
         catch (error) {
             console.error("Failed to register", error);

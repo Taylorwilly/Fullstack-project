@@ -34,7 +34,7 @@ export default function SubmissionDefaultPage() {
     async function loadWorkflow() {
         try {
             setLoading(true);
-            const response = await fetch(`http://localhost:4000/workflows/${workflowId}`);
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workflows/${workflowId}`);
 
             if (!response.ok) {
                 const errorData = await response.json();
@@ -90,7 +90,7 @@ export default function SubmissionDefaultPage() {
 
             const token = localStorage.getItem("token");
 
-            const res = await fetch("http://localhost:4000/submissions", {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/submissions`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -107,7 +107,7 @@ export default function SubmissionDefaultPage() {
             }
 
             const createdSubmission = await res.json();
-
+            
             //After submission, we redirect the client to the application status
             router.push(`/my_submissions/${createdSubmission.newSubmission.id}`);
         }

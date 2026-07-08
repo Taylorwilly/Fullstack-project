@@ -24,7 +24,7 @@ export default function LoginPage() {
             setLoggingIn(true);
             setErrorMessage("");
 
-            const res = await fetch("http://localhost:4000/auth/login", {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
                 method: "POST",
                 headers: {
                     "content-type": "application/json",
@@ -141,8 +141,6 @@ export default function LoginPage() {
                     </form>
                 </div>
             </section>
-
-
         </main>
     )
 

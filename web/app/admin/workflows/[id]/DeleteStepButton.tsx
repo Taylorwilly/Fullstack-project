@@ -15,9 +15,10 @@ export default function DeleteStepButton({ workflowId, stepId }: DeleteStepButto
 
         try {
             setDeleting(true);
+
             const token = localStorage.getItem("token");
 
-            const res = await fetch(`http://localhost:4000/workflows/${workflowId}/steps/${stepId}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workflows/${workflowId}/steps/${stepId}`, {
                 method: "DELETE",
                 headers: {
                     "Authorization": `Bearer ${token}`
