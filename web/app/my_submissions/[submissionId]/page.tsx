@@ -1,5 +1,9 @@
+"use client";
 //This page is where the client 
 // sees the application status after submission
+import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type Props = {
     params: Promise<{ submissionId: string }>;
@@ -47,47 +51,102 @@ function getStatusMessage(status: SubmissionStatus) {
     return <p>{messages[status]}</p>
 }
 
-export default async function SubmissionPage({ params }: Props) {
-    const { submissionId } = await params;
+export default function SubmissionPage({ params }: Props) {
+    const router = useRouter();
+    const { submissionId } = use(params);
 
-    const token = localStorage.getItem("token");
+    const [submission, setSubmission] = useState<Submission | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [workflow, setWorkflow] = useState<Workflow | null>(null);
+    const [errorMessage, setErrorMessage] = useState("");
+    const [sortedSteps, setSortedSteps] = useState<WorkflowStep[]>([]);
 
-    const submissionRes = await fetch(`http://localhost:4000/submissions/${submissionId}`, {
-        cache: "no-store",
-        headers: {
-            "Authorization": `Bearer ${token}`
-        },
-    });
+    async function loadSubmission() {
+        try {
+            setLoading(true);
+            const token = localStorage.getItem("token");
 
-    if (!submissionRes.ok) {
+            if (!token) {
+                router.push("/login");
+                return;
+            }
+            const submissionRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/submissions/${submissionId}`, {
+                cache: "no-store",
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                },
+            });
+
+            if (!submissionRes.ok) {
+                const errorData = await submissionRes.json();
+                setErrorMessage(errorData.message);
+                return;
+            }
+            const submission = await submissionRes.json();
+
+            const workflowRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workflows/${submission.workflowId}`, {
+                cache: "no-store",
+            })
+            if (!workflowRes.ok) {
+                const errorData = await workflowRes.json();
+                throw new Error(errorData.message || "Failed to load submissions");
+            }
+            const workflow = await workflowRes.json();
+
+            const sortedSteps = [...workflow.steps].sort((a, b) => a.order - b.order);
+
+            setSortedSteps(sortedSteps);
+            setSubmission(submission);
+            setWorkflow(workflow)
+        }
+        catch (error) {
+            console.error("Loading submissions failed", error);
+
+            if (error instanceof Error) {
+                setErrorMessage(error.message);
+            }
+            else {
+                setErrorMessage("Loading submissions failed");
+            }
+        }
+        finally {
+            setLoading(false);
+        }
+    }
+    useEffect(() => {
+        loadSubmission();
+    },
+        []
+    );
+    if (loading) {
         return (
             <main className="min-h-screen p-8">
                 <div className="mx-auto max-w-2xl">
-                    <h1 className="text-3xl font-bold">Submission not found</h1>
-                    <p className="mt-2 text-gray-600">No submission exists for ID: {submissionId}</p>
+                    Loading submission...
                 </div>
             </main>
-        );
+        )
     }
-    const submission: Submission = await submissionRes.json();
 
-    const workflowRes = await fetch(`http://localhost:4000/workflows/${submission.workflowId}`, {
-        cache: "no-store",
-    })
-    if (!workflowRes.ok) {
+    if (errorMessage) {
         return (
             <main className="min-h-screen p-8">
                 <div className="mx-auto max-w-2xl">
-                    <h1 className="text-3xl font-bold">Workflow not found</h1>
-                    <p className="mt-2 text-gray-600">The workflow could not be loaded</p>
+                    {errorMessage}
                 </div>
             </main>
-        );
+        )
     }
-    const workflow: Workflow = await workflowRes.json();
 
-    const sortedSteps = [...workflow.steps].sort((a, b) => a.order - b.order);
-
+    if (submission === null || workflow === null) {
+        return (
+            <main className="min-h-screen p-8">
+                <div className="mx-auto max-w-2xl">
+                    Submission not found
+                </div>
+            </main>
+        )
+    }
     return (
         <main className="min-h-screen p-8">
             <div className="mx-auto max-w-2xl">
@@ -112,7 +171,6 @@ export default async function SubmissionPage({ params }: Props) {
 
                 <section className="mt-6">
                     <h2 className="font-semibold text-xl">Answers</h2>
-
                     <ul className="mt-4 space-y-3">
                         {
                             sortedSteps.map((step) => {
@@ -128,6 +186,16 @@ export default async function SubmissionPage({ params }: Props) {
                         }
 
                     </ul>
+
+                    <Link
+                        href={`/my_submissions`}
+                        className="inline-flex items-center justify-center rounded-lg border 
+                                     border-slate-300 bg-white px-3 py-2 text-sm
+                                        font-medium text-slate-700 transition 
+                                     hover:border-slate-400 hover:bg-slate-50"
+                    >
+                        Back to My Submissions
+                    </Link>
                 </section>
             </div>
         </main>
