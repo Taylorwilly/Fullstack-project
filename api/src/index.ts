@@ -397,6 +397,7 @@ app.get("/workflows/:id", async (req, res) => {
         return res.status(500).json({ message: "Failed to fetch workflow" });
     };
 });
+
 //Patching the protected workflow/:id 
 //Only the admin can update the workflows
 app.patch("/workflows/:id", requireAuth, requireAdmin, async (req, res) => {
@@ -406,7 +407,9 @@ app.patch("/workflows/:id", requireAuth, requireAdmin, async (req, res) => {
 
     try {
         if (typeof id !== "string") {
-            return res.status(400).json({ message: "Workflow Id must be a string" })
+            return res.status(400).json({
+                message: "Workflow Id must be a string"
+            });
         }
         //Make sure the workflow exits before updating it
         const existingWorkflow = await prisma.workflow.findUnique({
@@ -843,6 +846,34 @@ app.get("/admin/submissions", requireAuth, requireAdmin, async (_req, res) => {
         return res.status(500).json({
             message: "Failed to retrieve submissions",
         })
+    }
+})
+
+app.get("/admin/submissions/:id", requireAuth, requireAdmin, async (req, res) => {
+    const { id } = req.params;
+
+    if (typeof id !== "string") {
+        return res.status(400).json({
+            message: "Submission ID must be a string"
+        });
+    }
+    try {
+        const submission = await prisma.submission.findUnique({
+            where: {
+                id,
+            },
+            include: {
+                answers: true,
+            }
+        });
+        if (!submission) return res.status(404).json({ message: "Submission not found" });
+
+        return res.status(200).json(submission);
+    }
+    catch (error) {
+        console.error("Unable to find the submission", error);
+        return res.status(500).json({ message: "Unable to find the submission" });
+
     }
 })
 
