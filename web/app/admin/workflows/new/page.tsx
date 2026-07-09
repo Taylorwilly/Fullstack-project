@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useState, SubmitEvent } from "react";
 //This is for unsaved data that are still in the frontend
 type DraftStep = {
@@ -52,13 +51,13 @@ export default function NewWorkflowPage() {
             return;
         }
 
-
         try {
             setSubmitting(true);
             setErrorMessage("");
 
             const token = localStorage.getItem("token");
-            const res = await fetch("http://localhost:4000/workflows", {
+
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workflows`, {
                 method: "POST",
                 headers: {
                     "content-type": "application/json",
@@ -91,13 +90,9 @@ export default function NewWorkflowPage() {
         }
 
     }
-
     return (
         <main className="min-h-screen p-8">
             <div className="mx-auto max-w-2xl">
-                <div className="mb-6">
-                    <Link href="/admin/workflows" className="text-sm text-red-700 underline">Back to workflows</Link>
-                </div>
                 <h1 className="text-3xl font-bold">
                     Create Workflow
                 </h1>
@@ -133,7 +128,6 @@ export default function NewWorkflowPage() {
                                 Add Step
                             </button>
                         </div>
-
                         {
                             steps.length === 0 ? (
                                 <p className="mt-4 text-sm text-gray-600">No steps added yet</p>

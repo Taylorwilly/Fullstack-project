@@ -26,7 +26,7 @@ type Workflow = {
 export default async function WorkFlowDefaultPage({ params }: Props) {
     const { id } = await params;
     {/* Fetching server for workflow/:id */ }
-    const res = await fetch(`http://localhost:4000/workflows/${id}`, { cache: "no-store" });
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workflows/${id}`, { cache: "no-store" });
     if (!res.ok) {
         return (
             <section className="mx-auto max-w-4xl">
@@ -41,29 +41,6 @@ export default async function WorkFlowDefaultPage({ params }: Props) {
 
     return (
         <section className="min-h-screen p-8">
-
-            <header>
-                <div>
-                    <p>
-
-                    </p>
-                    <h1>
-
-                    </h1>
-                    <p>
-
-                    </p>
-                </div>
-
-                <div>
-                    <p>
-
-                    </p>
-                    <p>
-
-                    </p>
-                </div>
-            </header>
 
             <div className="mx-auto max-w-2xl">
                 <h1 className="text-3xl font-bold">Workflow Detail</h1>

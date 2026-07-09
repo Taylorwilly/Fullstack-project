@@ -106,7 +106,7 @@ export default function LoginPage() {
                                 type="email"
                                 value={registration.email}
                                 onChange={(e) => setRegistration({ ...registration, email: e.target.value })}
-                                className="border rounded mt-3 ml-3"
+                                className="border rounded mt-3 ml-3 px-1"
                                 required
                             /><br />
 
@@ -115,7 +115,7 @@ export default function LoginPage() {
                                 type="password"
                                 value={registration.password}
                                 onChange={(e) => setRegistration({ ...registration, password: e.target.value })}
-                                className="border rounded mt-3 ml-3"
+                                className="border rounded mt-3 ml-3 px-1"
                                 required
                             /><br />
 
