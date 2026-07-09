@@ -1,18 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 type SubmissionStatus = "submitted" | "in_review" | "approved" | "rejected";
 
 type StatusButtonProps = {
     submissionId: string;
     currentStatus: SubmissionStatus;
+    onStatusChanged: (newStatus: SubmissionStatus) => void;
 
 }
 
-export default function StatusButton({ submissionId, currentStatus }: StatusButtonProps) {
-    const router = useRouter();
+export default function StatusButton({ submissionId, currentStatus, onStatusChanged }: StatusButtonProps) {
 
     const [updatingStatus, setUpdatingStatus] = useState<SubmissionStatus | null>(null);
 
@@ -22,7 +21,7 @@ export default function StatusButton({ submissionId, currentStatus }: StatusButt
 
             const token = localStorage.getItem("token");
 
-            const res = await fetch(`http://localhost:4000/submissions/${submissionId}/status`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/submissions/${submissionId}/status`, {
                 method: 'PATCH',
                 headers: {
                     "Content-Type": "application/json",
@@ -35,7 +34,7 @@ export default function StatusButton({ submissionId, currentStatus }: StatusButt
 
             if (!res.ok) throw new Error("No submission found");
 
-            router.refresh();
+            onStatusChanged(newStatus);
         }
         catch (error) {
             console.error("No submission found", error);
@@ -52,7 +51,10 @@ export default function StatusButton({ submissionId, currentStatus }: StatusButt
                 type="button"
                 onClick={() => handleStatusChange("in_review")}
                 disabled={updatingStatus !== null || currentStatus === "in_review"}
-                className='rounded bg-black text-white px-3 py-2 disabled:opacity-50'
+                className="inline-flex items-center 
+                        justify-center rounded-lg bg-[#1c5a4b] 
+                        text-white px-4 py-3 text-sm font-medium 
+                        transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-400"
             >
                 {updatingStatus === "in_review" ? "Updating..." : "Mark In Review"}
             </button>
@@ -61,7 +63,10 @@ export default function StatusButton({ submissionId, currentStatus }: StatusButt
                 type="button"
                 onClick={() => handleStatusChange("approved")}
                 disabled={updatingStatus !== null || currentStatus === "approved"}
-                className='rounded bg-black text-white px-3 py-2 disabled:opacity-50'
+                className="inline-flex items-center 
+                        justify-center rounded-lg bg-[#1c5a4b] 
+                        text-white px-4 py-3 text-sm font-medium 
+                        transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-400"
             >
                 {updatingStatus === "approved" ? "Updating..." : "Approved"}
             </button>
@@ -70,7 +75,10 @@ export default function StatusButton({ submissionId, currentStatus }: StatusButt
                 type="button"
                 onClick={() => handleStatusChange("rejected")}
                 disabled={updatingStatus !== null || currentStatus === "rejected"}
-                className='rounded bg-black text-white px-3 py-2 disabled:opacity-50'
+                className="inline-flex items-center 
+                        justify-center rounded-lg bg-[#1c5a4b] 
+                        text-white px-4 py-3 text-sm font-medium 
+                        transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-400"
             >
                 {updatingStatus === "rejected" ? "Updating..." : "Rejected"}
             </button>
