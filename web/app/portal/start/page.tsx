@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { primaryActionClass } from "@/app/components/ui";
+import { appPageClass, contentWrapperClass, emptyStateClass, errorMessageClass, listPanelClass, listRowActionClass, listRowClass, listRowContentClass, listRowMetaClass, listRowTitleClass, loadingMessageClass, pageHeaderClass, pageHeaderTextClass, pageHeadingClass, pageIntroClass, pageLabelClass, primaryActionClass } from "@/app/components/ui";
 
 
 type Workflow = {
@@ -18,7 +18,6 @@ export default function WorkflowPage() {
 
     async function loadWorkflows() {
         try {
-
             setLoading(true);
 
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workflows`);
@@ -52,78 +51,62 @@ export default function WorkflowPage() {
     }, []);
 
     return (
-        <section className="mx-auto max-w-5xl">
-            <header className="border-b border-slate-200 pb-6">
-                <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
-                    Welcome to the client workflows' page
-                </h1>
-            </header>
-            <section className="mt-8">
-                <div className="flex items-center justify-between gap-4">
-                    <h2 className="text-lg font-semibold text-slate-900">
-                        Choose an intake form to begin or continue your application.
-                    </h2>
-                </div>
-                {errorMessage ? (
-                    <div
-                        role="alert"
-                        className="mt-4 rounded-md border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800">
-                        {errorMessage}
+        <main className={appPageClass}>
+            <section className={contentWrapperClass}>
+                <header className={pageHeaderClass}>
+                    <div className={pageHeaderTextClass}>
+                        <p className={pageLabelClass}>
+                            Client Portal
+                        </p>
+                        <h1 className={pageHeadingClass}>
+                            Start an intake workflow
+                        </h1>
+                        <p className={pageIntroClass}>
+                            Choose an available intake workflow, complete the form, and submit your information for review.
+                        </p>
                     </div>
-                )
+                </header>
 
-                    : loading ?
-                        (
-                            <div className="mt-4 text-sm text-slate-600 rounded-md border border-slate-300 bg-white p-4">
-                                Loading workflows...
-                            </div>
-                        )
-                        : (
-                            <div className="mt-4 border border-slate-300 rounded-md bg-white overflow-hidden">
-                                <div className="flex justify-between items-center border-b border-slate-200 bg-slate-200 px-5 py-3 text-sm font-medium text-slate-600">
-                                    <span>
-                                        Available intake forms
-                                    </span>
-                                </div>
-
-                                <ul className=" divide-y divide-slate-200">
-                                    {
-                                        workflows.map(workflow => (
-                                            <li
-                                                key={workflow.id}
-                                                className="flex flex-wrap justify-between items-center px-5 py-4 gap-4  hover:bg-slate-50 transition-colors">
-                                                <div>
-                                                    <h3 className="text-base font-medium text-slate-900">
-                                                        {workflow.name}
-                                                    </h3>
-
-                                                    <Link
-                                                        href={`/submit/${workflow.id}`}
-                                                        className={primaryActionClass}
-                                                    >
-                                                        Start application
-                                                    </Link>
-                                                </div>
-                                            </li>
-                                        )
-                                        )
-                                    }
-                                </ul>
-                                {
-                                    errorMessage && (
-                                        <p
-                                            role="alert"
-                                            className="mt-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-red-800"
-                                        >
-                                            {errorMessage}
+                {
+                    errorMessage ? (
+                        <p className={errorMessageClass}>
+                            {errorMessage}
+                        </p>
+                    ) : loading ? (
+                        <p className={loadingMessageClass}>
+                            Loading workflows...
+                        </p>
+                    ) : workflows.length === 0 ? (
+                        <div className={emptyStateClass}>
+                            No intake workflows are available right now.
+                        </div>
+                    ) : (
+                        <div className={listPanelClass}>
+                            {workflows.map((workflow) => (
+                                <div key={workflow.id} className={listRowClass}>
+                                    <div className={listRowContentClass}>
+                                        <h2 className={listRowTitleClass}>
+                                            {workflow.name}
+                                        </h2>
+                                        <p className={listRowMetaClass}>
+                                            Complete this workflow to submit your intake information.
                                         </p>
-                                    )
-                                }
-                            </div>
+                                    </div>
 
-                        )
+                                    <div className={listRowActionClass}>
+                                        <Link
+                                            href={`/submit/${workflow.id}`}
+                                            className={primaryActionClass}
+                                        >
+                                            Start application
+                                        </Link>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )
                 }
             </section>
-        </section>
+        </main>
     );
 }

@@ -41,6 +41,8 @@ export const listPanelClass = "divide-y divide-[#d8ded7] rounded-xl border borde
 
 export const listRowClass = "flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between";
 
+export const listRowTitleClass = "text-sm font-semibold text-[#24332e]";
+
 export const listRowContentClass = "text-sm font-semibold text-[#24332e]";
 
 export const listRowMetaClass = "mt-1 text-xs leading-5 text-[#66736d]";
