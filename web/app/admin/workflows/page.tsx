@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { primaryButtonClass } from "@/app/components/ui";
+import { primaryActionClass } from "@/app/components/ui";
 import DeleteWorkflowButton from "./DeleteWorkflowButton";
 
 type Workflow = {
@@ -90,7 +90,7 @@ export default function WorkflowPage() {
                                     <p className="mt-1 text-sm text-slate-600 max-w-lg">
                                         Create your first workflow to begin collecting client information.
                                     </p>
-                                    <Link href="/admin/workflows/new" className={`${primaryButtonClass} mt-4`}>
+                                    <Link href="/admin/workflows/new" className={`${primaryActionClass} mt-4`}>
                                         Create your first workflow
                                     </Link>
                                 </div>

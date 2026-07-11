@@ -1,6 +1,6 @@
 { /*The Dynamic Page */ }
 
-import { cardClass } from "@/app/components/ui";
+import { panelClass } from "@/app/components/ui";
 import AddStepForm from "./AddStepForm";
 import DeleteStepButton from "./DeleteStepButton";
 import EditStepButton from "./EditStepButton";
@@ -30,7 +30,7 @@ export default async function WorkFlowDefaultPage({ params }: Props) {
     if (!res.ok) {
         return (
             <section className="mx-auto max-w-4xl">
-                <div className={`${cardClass} mt-6`}>
+                <div className={`${panelClass} mt-6`}>
                     <h1 className="text-3xl font-bold text-slate-900">Workflow not found</h1>
                     <p className="mt-2 text-gray-600">No workflow exists for ID: {id}</p>
                 </div>

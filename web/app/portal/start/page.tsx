@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { primaryButtonClass } from "@/app/components/ui";
+import { primaryActionClass } from "@/app/components/ui";
 
 
 type Workflow = {
@@ -99,7 +99,7 @@ export default function WorkflowPage() {
 
                                                     <Link
                                                         href={`/submit/${workflow.id}`}
-                                                        className={primaryButtonClass}
+                                                        className={primaryActionClass}
                                                     >
                                                         Start application
                                                     </Link>
