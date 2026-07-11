@@ -1,7 +1,7 @@
 "use client";
 import { useState, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
-import { primaryButtonClass } from "../components/ui";
+import { primaryActionClass } from "../components/ui";
 
 type Registration = {
     email: string;
@@ -121,7 +121,7 @@ export default function LoginPage() {
 
                             <button
                                 type="submit"
-                                className={primaryButtonClass}
+                                className={primaryActionClass}
                                 disabled={isLoggingIn}
                             >
                                 {isLoggingIn ? "Logging in..." : "Login"}

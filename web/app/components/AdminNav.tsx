@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { primaryButtonClass } from "./ui";
+import { primaryActionClass } from "./ui";
 
 const navigationItems = [
     {
@@ -65,7 +65,7 @@ export default function AdminNav() {
                     </nav>
                 </div>
 
-                <Link href="/admin/workflows/new" className={primaryButtonClass}>
+                <Link href="/admin/workflows/new" className={primaryActionClass}>
                     New Workflow
                 </Link>
             </div>

@@ -85,7 +85,6 @@ export default function RegisterPage() {
                         type="text"
                         value={registration.name}
                         onChange={(e) => setRegistration({ ...registration, name: e.target.value })}
-                        placeholder="Enter your name here"
                         className="w-full rounded border px-3 py-2"
                         required
                     />
@@ -95,7 +94,6 @@ export default function RegisterPage() {
                         type="email"
                         value={registration.email}
                         onChange={(e) => setRegistration({ ...registration, email: e.target.value })}
-                        placeholder="Enter your email here"
                         className="w-full rounded border px-3 py-2"
                         required
                     />
@@ -105,7 +103,6 @@ export default function RegisterPage() {
                         type="password"
                         value={registration.password}
                         onChange={(e) => setRegistration({ ...registration, password: e.target.value })}
-                        placeholder="Enter your password here"
                         className="w-full rounded border px-3 py-2"
                         required
                     />
@@ -115,7 +112,6 @@ export default function RegisterPage() {
                         type="password"
                         value={registration.confirmPassword}
                         onChange={(e) => setRegistration({ ...registration, confirmPassword: e.target.value })}
-                        placeholder="Confirm the password"
                         className="w-full rounded border px-3 py-2"
                         required
                     />
@@ -131,7 +127,6 @@ export default function RegisterPage() {
                         </p>
                     )
                 }
-
                 <button
                     type="submit"
                     disabled={submitting}
