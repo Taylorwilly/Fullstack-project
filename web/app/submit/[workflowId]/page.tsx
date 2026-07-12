@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { appPageClass, emptyStateClass, errorMessageClass, fieldInputClass, loadingMessageClass, narrowContentWrapperClass, pageHeaderClass, pageHeadingClass, pageIntroClass, pageLabelClass, panelClass, secondaryActionClass } from "@/app/components/ui";
+import { appPageClass, emptyStateClass, errorMessageClass, fieldGroupClass, fieldInputClass, fieldLabelClass, formActionClass, loadingMessageClass, narrowContentWrapperClass, pageHeaderClass, pageHeadingClass, pageIntroClass, pageLabelClass, panelClass, panelTextClass, panelTitleClass, primaryActionClass, secondaryActionClass } from "@/app/components/ui";
 
 type Step = {
     id: string;
@@ -234,19 +234,19 @@ export default function SubmissionDefaultPage() {
                         </div>
                     </div>
                     <div className="mb-6">
-                        <p>
+                        <p className={pageLabelClass}>
                             Current Step
                         </p>
-                        <h2>
+                        <h2 className={`${panelTitleClass}`}>
                             {currentStep.title}
                         </h2>
-                        <p>
+                        <p className={`${panelTextClass} mt-2 text-lg`}>
                             Enter your answer below. You can go back to review previous steps before submitting.
                         </p>
                     </div>
 
-                    <div>
-                        <label>
+                    <div className={fieldGroupClass}>
+                        <label htmlFor={currentStep.id} className={fieldLabelClass}>
                             Your answer
                         </label>
                         <input
@@ -264,22 +264,37 @@ export default function SubmissionDefaultPage() {
                         />
                     </div>
                     {submissionError && (
-                        <p role="alert" className={`${errorMessageClass} mt-5`}>
+                        <p role="alert" className={errorMessageClass} >
                             {submissionError}
                         </p>
                     )}
 
-                    <div>
-                        <button>
+                    <div className={formActionClass}>
+                        <button
+                            type="button"
+                            onClick={handlePrevious}
+                            disabled={isFirstStep}
+                            className={secondaryActionClass}
+                        >
                             Previous
                         </button>
 
                         {!isLastStep ? (
-                            <button>
+                            <button
+                                type="button"
+                                onClick={handleNext}
+                                disabled={isLastStep}
+                                className={secondaryActionClass}
+                            >
                                 Next
                             </button>
                         ) : (
-                            <button>
+                            <button
+                                type="submit"
+                                onClick={handleSubmission}
+                                disabled={submitting}
+                                className={primaryActionClass}
+                            >
                                 {submitting ? "Submitting..." : "Submit appllication"}
                             </button>
                         )}
