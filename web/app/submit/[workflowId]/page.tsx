@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { appPageClass, emptyStateClass, errorMessageClass, fieldInputClass, loadingMessageClass, narrowContentWrapperClass, pageHeaderClass, pageHeadingClass, pageIntroClass, pageLabelClass, panelClass, secondaryActionClass } from "@/app/components/ui";
 
 type Step = {
     id: string;
@@ -107,7 +108,7 @@ export default function SubmissionDefaultPage() {
             }
 
             const createdSubmission = await res.json();
-            
+
             //After submission, we redirect the client to the application status
             router.push(`/my_submissions/${createdSubmission.newSubmission.id}`);
         }
@@ -132,28 +133,47 @@ export default function SubmissionDefaultPage() {
     }, [workflowId]);
 
     if (loading) {
-        return <main className="min-h-screen p-8">Workflow loading...</main>
-    };
+        return (
+            <main className={appPageClass}>
+                <section className={narrowContentWrapperClass}>
+                    <p className={loadingMessageClass}>
+                        Loading workflow...
+                    </p>
+                </section>
+            </main>
+        )
+    }
 
     if (!workflow) {
-        return <main className="min-h-screen p-8">No workflow found</main>
-    };
+        return (
+            <main>
+                <section>
+                    <div>
+                        No workflow was found.
+                    </div>
+                    <div>
+                        <Link href="/portal/start" className={secondaryActionClass}>
+                            Back to workflows
+                        </Link>
+                    </div>
+                </section>
+            </main>
+        );
+    }
 
     if (workflow.steps.length === 0) {
         return (
-            <main className="min-h-screen p-8">
-                <div>
-                    <Link href="/admin/workflows" className="underline text-sm">
-                        Back to workflows
-                    </Link>
-
-                    <h1>
-                        {workflow.name}
-                    </h1>
-                    <p>
-                        This workflow does not have steps yet.
-                    </p>
-                </div>
+            <main className={appPageClass}>
+                <section className={narrowContentWrapperClass}>
+                    <div className={emptyStateClass}>
+                        This workflow does not have steps yet
+                    </div>
+                    <div className="mt-4">
+                        <Link href="/portal/start" className={secondaryActionClass}>
+                            Back to workflows
+                        </Link>
+                    </div>
+                </section>
             </main>
         );
     };
@@ -161,6 +181,7 @@ export default function SubmissionDefaultPage() {
     const currentStep = workflow.steps[currentStepIndex];
     const isFirstStep = currentStepIndex === 0;
     const isLastStep = currentStepIndex === workflow.steps.length - 1;
+    const progressPercentage = Math.round(((currentStepIndex + 1) / workflow.steps.length) * 100);
 
     function handlePrevious() {
         if (isFirstStep) return;
@@ -172,74 +193,99 @@ export default function SubmissionDefaultPage() {
     };
 
     return (
-        <main className="min-h-screen p-8">
-            <div className="max-w-2xl mx-auto">
-                <h1 className="font-bold mt-4 text-2xl ">
-                    {workflow.name}
-                </h1>
-                <p className="text-gray-600 mt-2">
-                    Step {currentStepIndex + 1} of {workflow.steps.length}
-                </p>
-
-                <div className="rounded border px-3 mt-3">
-                    <div className="text-gray-600">Current Step</div>
-                    <h2 className="font-semibold">{currentStep.title}</h2>
-                    <input
-                        type="text"
-                        value={answers[currentStep.id] || ""}
-                        onChange={(e) =>
-                            setAnswers((prev) => ({
-                                ...prev,
-                                [currentStep.id]: e.target.value,
-                            }))
-                        }
-                        placeholder="Enter your answer here"
-                        className="rounded border px-3"
-                    />
+        <main className={appPageClass}>
+            <section className={narrowContentWrapperClass}>
+                <div>
+                    <Link href="/portal/start" className={secondaryActionClass}>
+                        Back to workflows
+                    </Link>
                 </div>
-                {
-                    submissionError && (
-                        <p
-                            role="alert"
-                            className="mt-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-red-800"
-                        >
+
+                <header className="mb-6 space-y-2">
+                    <p className={pageLabelClass}>
+                        Intake Workflow
+                    </p>
+
+                    <h1 className={pageHeadingClass}>
+                        {workflow.name}
+                    </h1>
+                    <p className={pageIntroClass}>
+                        Complete each step before submitting your application for review.
+                    </p>
+                </header>
+
+                <div className={panelClass}>
+                    <div className="mb-6">
+                        <div className="flex items-center justify-between gap-4 text-sm text-[#66736d]">
+                            <span>
+                                Step {currentStepIndex + 1} of {workflow.steps.length}
+                            </span>
+
+                            <span>
+                                {progressPercentage} % complete
+                            </span>
+                        </div>
+
+                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#e4eee8]">
+                            <div
+                                className="h-full rounded-full bg-[#1c5a4b]"
+                                style={{ width: `${progressPercentage}%` }}
+                            />
+                        </div>
+                    </div>
+                    <div className="mb-6">
+                        <p>
+                            Current Step
+                        </p>
+                        <h2>
+                            {currentStep.title}
+                        </h2>
+                        <p>
+                            Enter your answer below. You can go back to review previous steps before submitting.
+                        </p>
+                    </div>
+
+                    <div>
+                        <label>
+                            Your answer
+                        </label>
+                        <input
+                            id={currentStep.id}
+                            type="text"
+                            value={answers[currentStep.id] || ""}
+                            onChange={(e) =>
+                                setAnswers((prev) => ({
+                                    ...prev,
+                                    [currentStep.id]: e.target.value,
+                                }))
+                            }
+                            placeholder="Enter your name here"
+                            className={fieldInputClass}
+                        />
+                    </div>
+                    {submissionError && (
+                        <p role="alert" className={`${errorMessageClass} mt-5`}>
                             {submissionError}
                         </p>
-                    )
-                }
+                    )}
 
-                <div className="flex gap-3 mt-4">
-                    <button
-                        type="button"
-                        onClick={handlePrevious}
-                        disabled={isFirstStep}
-                        className="bg-black rounded p-2 text-white disabled:opacity-50"
-                    >
-                        Previous
-                    </button>
+                    <div>
+                        <button>
+                            Previous
+                        </button>
 
-                    {
-                        !isLastStep ?
-                            (<button
-                                type="button"
-                                onClick={handleNext}
-                                className="bg-black text-white px-3 py-2 rounded"
-                            >
+                        {!isLastStep ? (
+                            <button>
                                 Next
                             </button>
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={handleSubmission}
-                                    disabled={submitting}
-                                    className="bg-black text-white px-3 py-2 rounded disabled:opacity-50"
-                                >
-                                    {submitting ? "Submitting..." : "Submit"}
-                                </button>
-                            )
-                    }
+                        ) : (
+                            <button>
+                                {submitting ? "Submitting..." : "Submit appllication"}
+                            </button>
+                        )}
+                    </div>
                 </div>
-            </div>
+            </section>
         </main>
     );
 

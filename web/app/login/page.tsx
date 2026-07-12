@@ -121,7 +121,7 @@ export default function LoginPage() {
 
                             <button
                                 type="submit"
-                                className={primaryActionClass}
+                                className={`${primaryActionClass} mt-1`}
                                 disabled={isLoggingIn}
                             >
                                 {isLoggingIn ? "Logging in..." : "Login"}
