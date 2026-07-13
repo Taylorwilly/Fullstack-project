@@ -50,26 +50,26 @@ export const listRowMetaClass = "mt-1 text-xs leading-5 text-[#66736d]";
 export const listRowActionClass = "flex flex-wrap items-center gap-3 sm:shrink-0";
 
 
-export const primaryActionClass = "inline-flex items-center justify-center rounded-lg bg-[#1c5a4b] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#16483c] disabled:cursor-not-allowed disabled:opacity-40"
+export const primaryActionClass = "inline-flex m-2 items-center justify-center rounded-lg bg-[#1c5a4b] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#16483c] disabled:cursor-not-allowed disabled:opacity-40"
 
-export const secondaryActionClass = "inline-flex items-center justify-center rounded-lg border border-[#d8ded7] bg-white px-4 py-2 text-sm font-medium text-[#24332e] transition hover:border-[#1c5a4b] disabled:cursor-not-allowed disabled:opacity-40"
+export const secondaryActionClass = "inline-flex m-2 items-center justify-center rounded-lg border border-[#d8ded7] bg-white px-4 py-2 text-sm font-medium text-[#24332e] transition hover:border-[#1c5a4b] disabled:cursor-not-allowed disabled:opacity-40"
 
-export const dangerActionClass = "inline-flex items-center justify-center rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-40 disabled:cursor-not-allowed disabled:opacity-40";
+export const dangerActionClass = "inline-flex m-2 items-center justify-center rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-40 disabled:cursor-not-allowed disabled:opacity-40";
 
 
-export const fieldInputClass = "w-full rounded-lg border border-[#d8ded7] bg-white px-3 py-2 text-sm text-[#24332e] outline-none transition placeholder:text-[#9aa59f] focus:border-[#1c5a4b] focus:ring-2 focus:ring-[#e4eee8]";
+export const fieldInputClass = "w-full m-1 rounded-lg border border-[#d8ded7] bg-white px-3 py-2 text-sm text-[#24332e] outline-none transition placeholder:text-[#9aa59f] focus:border-[#1c5a4b] focus:ring-2 focus:ring-[#e4eee8]";
 
-export const fieldTextareaClass = "";
+export const fieldTextareaClass = "min-h-28 w-full rounded-lg border border-[#d8ded7] bg-white px-3 py-2.5 text-sm text-[#24332e] outline-none transition placeholder:text-[#9aa59f] focus:border-[#1c5a4b] focus:ring-2 focus:ring-[#e4eee8]";
 
-export const fieldLabelClass = "";
+export const fieldLabelClass = "text-sm font-medium text-[#24332e]";
 
-export const fieldHelperClass = "";
+export const fieldHelpClass = "mt-1 text-xs leading-5 text-[#66736d]";
 
-export const fieldGroupClass = "";
+export const fieldGroupClass = "space-y-1.5";
 
-export const formActionClass = "";
+export const formActionClass = "mt-6 flex flex-col gap-3 sm:flex-row sm:flex-row sm:items-center";
 
-export const errorMessageClass = "rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800";
+export const errorMessageClass = "rounded-lg mt-5 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800";
 
 export const successMessageClass = "rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800";
 

@@ -68,6 +68,12 @@ export default function SubmissionDefaultPage() {
 
     async function handleSubmission() {
         try {
+            const token = localStorage.getItem("token");
+
+            if (!token) {
+                router.push('/login');
+                return;
+            }
             //Remove an old error if the client tries again
             setSubmissionError("");
 
@@ -89,7 +95,7 @@ export default function SubmissionDefaultPage() {
                 return;
             };
 
-            const token = localStorage.getItem("token");
+
 
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/submissions`, {
                 method: "POST",

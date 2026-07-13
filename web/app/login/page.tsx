@@ -106,7 +106,7 @@ export default function LoginPage() {
                                 type="email"
                                 value={registration.email}
                                 onChange={(e) => setRegistration({ ...registration, email: e.target.value })}
-                                className="border rounded mt-3 ml-3 px-1"
+                                className="border rounded mt-3 mb-3 ml-3 px-1"
                                 required
                             /><br />
 
@@ -115,13 +115,13 @@ export default function LoginPage() {
                                 type="password"
                                 value={registration.password}
                                 onChange={(e) => setRegistration({ ...registration, password: e.target.value })}
-                                className="border rounded mt-3 ml-3 px-1"
+                                className="border rounded mt-1 ml-3 px-1"
                                 required
                             /><br />
 
                             <button
                                 type="submit"
-                                className={`${primaryActionClass} mt-1`}
+                                className={primaryActionClass}
                                 disabled={isLoggingIn}
                             >
                                 {isLoggingIn ? "Logging in..." : "Login"}
