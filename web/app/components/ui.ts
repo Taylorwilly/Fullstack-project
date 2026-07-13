@@ -5,18 +5,18 @@ export const appPageClass = "min-h-screen bg-[#f6f2ea] px-4 py-8 text-[#24332e] 
 
 export const contentWrapperClass = "mx-auto w-full max-w-6xl";
 
-export const narrowContentWrapperClass = "mx-auto w-full max-w-2xl";
+export const narrowContentWrapperClass = "mx-auto w-full max-w-3xl";
 
 
 export const pageHeaderClass = "mb-8 flex flex-col gap-4 sm:flex-rowsm:items-end sm:justify-between";
 
 export const pageHeaderTextClass = "space-y-2";
 
-export const pageLabelClass = "text-xs font-semibold tracking-tight text-[#24332e]";
+export const pageLabelClass = "text-xs font-semibold uppercase tracking-[0.18em] text-[#24332e]";
 
 export const pageHeadingClass = "text-3xl font-semibold tracking-tight text-[#24332e]";
 
-export const pageIntroClass = "max-w-2xl text-sm leading-6 text-[#55736d]";
+export const pageIntroClass = "max-w-2xl text-[15px] leading-6 text-[#66736d]";
 
 
 export const sectionClass = "mt-8";
@@ -28,24 +28,24 @@ export const sectionHeadingClass = "text-xl font-semibold text-[#24332e]";
 export const sectionTextClass = "text-sm leading-6 text-[#66736d]";
 
 
-export const panelClass = "rounded-xl border border-[#d8ded7] bg-white p-5 shadow-[0_1px_2px_rgba(36,51,46,0.08)]";
+export const panelClass = "rounded-xl border border-[#d8ded7] bg-white p-5 shadow-[0_10px_30px_rgba(36,51,46,.12)]";
 
 export const panelHeaderClass = "mb-4 flex flex-col gap-1";
 
 export const panelTitleClass = "text-base font-semibold text-[#24332e]";
 
-export const panelTextClass = "text-sm leading-6 text-[#66736d]";
+export const panelTextClass = "text-[15px] leading-6 text-[#66736d]";
 
 
-export const listPanelClass = "divide-y divide-[#d8ded7] rounded-xl border border-[#d8ded7] bg-white shadow-[0_1px_2px_rgba(36,51,46,0,08)]";
+export const listPanelClass = "divide-y divide-[#d8ded7] rounded-xl border border-[#d8ded7] bg-white shadow-[0_10px_30px_rgba(36,51,46,.12)]";
 
 export const listRowClass = "flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between";
 
-export const listRowTitleClass = "text-sm font-semibold text-[#24332e]";
+export const listRowTitleClass = "text-[15px] font-semibold text-[#24332e]";
 
 export const listRowContentClass = "text-sm font-semibold text-[#24332e]";
 
-export const listRowMetaClass = "mt-1 text-xs leading-5 text-[#66736d]";
+export const listRowMetaClass = "mt-1 text-sm leading-5 text-[#66736d]";
 
 export const listRowActionClass = "flex flex-wrap items-center gap-3 sm:shrink-0";
 
@@ -77,4 +77,4 @@ export const loadingMessageClass = "rounded-lg border border-[#d8ded7] bg-white 
 
 export const emptyStateClass = "rounded-xl border border-dashed border-[#d8ded7]";
 
-export const mutedCodeClass = "font-mono text-xs text-[#66736d]";
+export const mutedCodeClass = "font-mono text-sm text-[#66736d]";

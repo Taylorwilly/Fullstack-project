@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { appPageClass, contentWrapperClass, emptyStateClass, errorMessageClass, listPanelClass, listRowActionClass, listRowClass, listRowContentClass, listRowMetaClass, listRowTitleClass, loadingMessageClass, pageHeaderClass, pageHeaderTextClass, pageHeadingClass, pageIntroClass, pageLabelClass, primaryActionClass } from "@/app/components/ui";
+import { appPageClass, contentWrapperClass, emptyStateClass, errorMessageClass, listPanelClass, listRowActionClass, listRowClass, listRowContentClass, listRowMetaClass, listRowTitleClass, loadingMessageClass, pageHeaderClass, pageHeaderTextClass, pageHeadingClass, pageIntroClass, pageLabelClass, primaryActionClass, secondaryActionClass } from "@/app/components/ui";
 
 
 type Workflow = {
@@ -65,6 +65,9 @@ export default function WorkflowPage() {
                             Choose an available intake workflow, complete the form, and submit your information for review.
                         </p>
                     </div>
+                    <Link href="/my_submissions" className={secondaryActionClass}>
+                        View my submissions
+                    </Link>
                 </header>
 
                 {

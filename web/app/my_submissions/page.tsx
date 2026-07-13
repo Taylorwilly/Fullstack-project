@@ -3,9 +3,29 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { formatStatus, type SubmissionStatus } from "../components/status";
-import statusBadgeClass from "../components/status";
-import { appPageClass, contentWrapperClass, emptyStateClass, errorMessageClass, listPanelClass, listRowActionClass, listRowClass, listRowContentClass, listRowMetaClass, listRowTitleClass, loadingMessageClass, pageHeaderClass, pageHeaderTextClass, pageHeadingClass, pageIntroClass, pageLabelClass, primaryActionClass, secondaryActionClass } from "../components/ui";
+import { formatStatus, statusBadgeClass, type SubmissionStatus } from "../components/status";
+
+import {
+    appPageClass,
+    contentWrapperClass,
+    emptyStateClass,
+    errorMessageClass,
+    listPanelClass,
+    listRowActionClass,
+    listRowClass,
+    listRowContentClass,
+    listRowMetaClass,
+    listRowTitleClass,
+    loadingMessageClass,
+    pageHeaderClass,
+    pageHeaderTextClass,
+    pageHeadingClass,
+    pageIntroClass,
+    pageLabelClass,
+    primaryActionClass,
+    secondaryActionClass
+} from "../components/ui";
+
 type Submission = {
     id: string;
     workflowId: string;

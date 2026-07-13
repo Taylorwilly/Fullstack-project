@@ -68,16 +68,16 @@ export default function SubmissionDefaultPage() {
 
     async function handleSubmission() {
         try {
+            //Remove an old error if the client tries again
+            setSubmissionError("");
+            setSubmitting(true);
+
             const token = localStorage.getItem("token");
 
             if (!token) {
                 router.push('/login');
                 return;
             }
-            //Remove an old error if the client tries again
-            setSubmissionError("");
-
-            setSubmitting(true);
 
             if (!workflow) return;
 

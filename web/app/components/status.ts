@@ -1,5 +1,7 @@
+
 export type SubmissionStatus = "submitted" | "in_review" | "approved" | "rejected";
 
+//This function helps us to show the first letter of status in capital to the client
 export function formatStatus(status: SubmissionStatus) {
     if (status === "in_review") {
         return "In Review";
@@ -7,7 +9,17 @@ export function formatStatus(status: SubmissionStatus) {
     return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-export default function statusBadgeClass(status: SubmissionStatus) {
+export function getStatusMessage(status: SubmissionStatus) {
+    const messages: Record<SubmissionStatus, string> = {
+        submitted: "Your application was received",
+        in_review: "Your application is currently under review.",
+        approved: "Your application has been approved.",
+        rejected: "Your application was not approved."
+    }
+    return messages[status];
+}
+
+export function statusBadgeClass(status: SubmissionStatus) {
     if (status === "submitted") {
         return "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700";
     }
