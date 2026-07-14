@@ -4,11 +4,16 @@ import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import StatusButton from "./StatusButton";
 import { useRouter } from "next/navigation";
+import {
+    formatStatus,
+    type SubmissionStatus,
+    statusBadgeClass
+} from "@/app/components/status";
+import { appPageClass, listPanelClass, listRowClass, listRowContentClass, listRowMetaClass, listRowTitleClass, mutedCodeClass, narrowContentWrapperClass, pageHeadingClass, pageIntroClass, pageLabelClass, panelClass, panelTextClass, panelTitleClass, secondaryActionClass } from "@/app/components/ui";
 
 type Props = {
     params: Promise<{ submissionId: string }>;
 }
-type SubmissionStatus = "submitted" | "in_review" | "approved" | "rejected";
 
 type Submission = {
     id: string;
@@ -33,74 +38,69 @@ type Workflow = {
     steps: WorkflowStep[];
 }
 
-//This function helps us to show the first letter of status in capital to the client
-function formatStatus(status: SubmissionStatus) {
-    if (status === "in_review") return "In Review";
-    return status.charAt(0).toUpperCase() + status.slice(1);
-}
-
 export default function SubmissionPage({ params }: Props) {
     const router = useRouter();
 
     const { submissionId } = use(params);
 
-    const [submission, setSubmission] = useState<Submission | null>(null);
-    const [workflow, setWorkflow] = useState<Workflow | null>(null);
     const [loading, setLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState("");
-    const [sortedSteps, setSortedStep] = useState<WorkflowStep[]>([]);
+    const [submission, setSubmission] = useState<Submission | null>(null);
+    const [workflow, setWorkflow] = useState<Workflow | null>(null);
+    const [sortedSteps, setSortedSteps] = useState<WorkflowStep[]>([]);
 
 
     async function loadSubmission() {
         try {
             setLoading(true);
+            setErrorMessage("");
+
             const token = localStorage.getItem("token");
+
             if (!token) {
                 router.push("/login");
                 return;
             }
 
-            const submissionRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/submissions/${submissionId}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/submissions/${submissionId}`, {
                 cache: "no-store",
                 headers: {
-                    "Authorization": `Bearer ${token}`
-                },
+                    Authorization: `Bearer ${token}`,
+                }
+            })
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || "Failed to load submission");
+            }
+            const submissionData = await res.json();
+
+            const workflowRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workflows/${submissionData.workflowId}`, {
+                cache: "no-store",
+
             });
 
-            if (!submissionRes.ok) {
-                const errorData = await submissionRes.json();
-                setErrorMessage(errorData.message);
-                return;
-            }
-            const submission = await submissionRes.json();
-
-            const workflowRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workflows/${submission.workflowId}`, {
-                cache: "no-store",
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                },
-            })
             if (!workflowRes.ok) {
                 const errorData = await workflowRes.json();
-                throw new Error(errorData.message || "Failed to load the workflow");
+                throw new Error(errorData.message || "Failed to load workflow");
             }
 
-            const workflow = await workflowRes.json();
+            const workflowData = await workflowRes.json();
 
-            const sortedStep = [...workflow.steps].sort((a, b) => a.order - b.order);
+            const orderedSteps = [...workflowData.steps].sort((a, b) => a.order - b.order);
 
-            setSubmission(submission);
-            setWorkflow(workflow);
-            setSortedStep(sortedStep);
+            setSubmission(submissionData);
+            setWorkflow(workflowData);
+            setSortedSteps(orderedSteps);
         }
         catch (error) {
-            console.error("Loading submissions failed", error);
+            console.error("Loading submission failed", error);
 
             if (error instanceof Error) {
                 setErrorMessage(error.message);
             }
             else {
-                setErrorMessage("Loading submissions failed");
+                setErrorMessage("Loading submission failed");
             }
         }
         finally {
@@ -114,99 +114,156 @@ export default function SubmissionPage({ params }: Props) {
 
     if (loading) {
         return (
-            <main className="min-h-screen p-8">
-                <div className="mx-auto max-w-2xl">
-                    Loading submission...
-                </div>
+            <main className={appPageClass}>
+                <section className={narrowContentWrapperClass}>
+                    <p className={pageIntroClass}>
+                        Loading submission...
+                    </p>
+                </section>
             </main>
         )
     }
 
     if (errorMessage) {
         return (
-            <main className="min-h-screen p-8">
-                <div className="mx-auto max-w-2xl">
-                    {errorMessage}
-                </div>
+            <main className={appPageClass}>
+                <section className={narrowContentWrapperClass}>
+                    <p className={pageIntroClass}>
+                        {errorMessage}
+                    </p>
+                    <div>
+                        <Link href="/admin/submissions" className={secondaryActionClass}>
+                            Back to submissions
+                        </Link>
+                    </div>
+                </section>
             </main>
         )
     }
 
     if (submission === null || workflow === null) {
         return (
-            <main className="min-h-screen p-8">
-                <div className="mx-auto max-w-2xl">
-                    Submission not found.
-                </div>
+            <main className={appPageClass}>
+                <section className={narrowContentWrapperClass}>
+                    <p className={pageIntroClass}>
+                        Submission not found.
+                    </p>
+                    <div>
+                        <Link href="/admin/submissions" className={secondaryActionClass}>
+                            Back to submissions
+                        </Link>
+                    </div>
+                </section>
             </main>
         )
     }
 
     return (
-        <main className="min-h-screen p-8">
-            <div className="mx-auto max-w-2xl">
-                <Link href="/admin/submissions" className="underline text-sm">
-                    Back to submissions
-                </Link>
-                <h1 className="mt-4 text-3xl font-bold">
-                    Submission Details
-                </h1>
-                <div className="mt-6 border rounded space-y-2 p-4">
-                    <div >
-                        Submission id: {submission.id}
-                    </div>
-                    <div>
-                        Workflow: {workflow.name}
-                    </div>
-                    <div>
-                        Workflow id: {submission.workflowId}
-                    </div>
-                    <div>
-                        Status: {formatStatus(submission.status)}
+        <main className={appPageClass}>
+            <section className={narrowContentWrapperClass}>
+                <div className="mb-6">
+                    <Link href="/admin/submissions" className={secondaryActionClass}>
+                        Back to submissions
+                    </Link>
+                </div>
+
+                <header className="mb-6 space-y-2">
+                    <p className={pageLabelClass}>
+                        Admin review
+                    </p>
+                    <h1 className={pageHeadingClass}>
+                        Submission details
+                    </h1>
+                    <p className={pageIntroClass}>
+                        Review the submitted answers, confirm the workflow, and update the application status.
+                    </p>
+                </header>
+
+                <div className={panelClass}>
+                    <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <h2 className={panelTitleClass}>
+                                Submission summary
+                            </h2>
+                            <div className="mt-4 space-y-1">
+                                <p className={panelTextClass}>
+                                    Submission ID: {" "}
+                                    <span className={mutedCodeClass}>
+                                        {submission.id}
+                                    </span>
+                                </p>
+
+                                <p className={panelTextClass}>
+                                    Workflow: {workflow.name}
+                                </p>
+                                <p className={panelTextClass}>
+                                    Workflow ID: {" "}
+                                    <span className={mutedCodeClass}>
+                                        {submission.workflowId}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                        <span className={statusBadgeClass(submission.status)}>
+                            {formatStatus(submission.status)}
+                        </span>
                     </div>
 
-                    <StatusButton
-                        submissionId={submission.id}
-                        currentStatus={submission.status}
-                        onStatusChanged={(newStatus) => {
-                            setSubmission((currentSubmission) => {
-                                if (currentSubmission === null) return currentSubmission;
+                    <div className="mt-6 border-t border-[#d8ded7] pt-5">
+                        <p className={`${panelTextClass} mb-3`}>
+                            Update this submission&apos;s review status.
+                        </p>
 
-                                return {
-                                    ...currentSubmission,
-                                    status: newStatus,
-                                }
-                            }
-
-                            )
-                        }
-
-                        }
-                    />
+                        <StatusButton
+                            submissionId={submission.id}
+                            currentStatus={submission.status}
+                            onStatusChanged={(newStatus) => {
+                                setSubmission((currentSubmission) => {
+                                    if (currentSubmission === null) {
+                                        return currentSubmission;
+                                    }
+                                    return {
+                                        ...currentSubmission,
+                                        status: newStatus,
+                                    };
+                                });
+                            }}
+                        />
+                    </div>
                 </div>
 
                 <section className="mt-6">
-                    <h2 className="font-semibold text-xl">Answers</h2>
-
-                    <ul className="mt-4 space-y-3">
+                    <div className="mt-4">
+                        <h2 className={panelTitleClass}>
+                            Submitted answers
+                        </h2>
+                        <p className={`${panelTextClass} mt-1`}>
+                            These are the answers provided by the client for each workflow step.
+                        </p>
+                    </div>
+                    <ul className={listPanelClass}>
                         {
                             sortedSteps.map((step) => {
-                                const answer = submission.answers.find((answer) => answer.stepId === step.id);
-
-                                return (
-                                    <li key={step.id} className="rounded border p-4">
-                                        <div className="font-semibold">{step.title}</div>
-                                        <div className="mt-1 text-gray-700">{answer?.value ?? "No answer provided"}</div>
-                                    </li>
+                                const answer = submission.answers.find((answer) =>
+                                    answer.stepId === step.id
                                 );
+                                return (
+                                    <li key={step.id} className={listRowClass}>
+                                        <div className={listRowContentClass}>
+                                            <h3 className={listRowTitleClass}>
+                                                {step.title}
+                                            </h3>
+                                            <p className={listRowMetaClass}>
+                                                {answer?.value ?? "No answer provided"}
+                                            </p>
+                                        </div>
+                                    </li>
+                                )
                             })
                         }
-
                     </ul>
                 </section>
-
-            </div>
+            </section>
         </main>
     )
-
 }
