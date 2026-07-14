@@ -1,54 +1,82 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+    type SubmissionStatus,
+    formatStatus,
+    statusBadgeClass
+} from "@/app/components/status";
+import {
+    appPageClass,
+    contentWrapperClass,
+    emptyStateClass,
+    errorMessageClass,
+    listPanelClass,
+    listRowActionClass,
+    listRowClass,
+    listRowContentClass,
+    listRowMetaClass,
+    listRowTitleClass,
+    loadingMessageClass,
+    mutedCodeClass,
+    pageHeaderClass,
+    pageHeaderTextClass,
+    pageHeadingClass,
+    pageIntroClass,
+    pageLabelClass,
+    secondaryActionClass,
+
+} from "@/app/components/ui";
+
+type SubmissionAnswer = {
+    id: string;
+    stepId: string;
+    value: string;
+};
 
 type Submission = {
     id: string;
     workflowId: string;
     answers: SubmissionAnswer[];
-    status: string;
-}
+    status: SubmissionStatus;
+};
 
-type SubmissionAnswer = {
-    id: string,
-    stepId: string,
-    value: string,
-}
-
-export default function AdminSubmissionsPage() {
+export default function AdminSubmissionPage() {
 
     const [loading, setLoading] = useState(true);
-    const [errorMessage, setErrorMessage] = useState("");
     const [submissions, setSubmissions] = useState<Submission[]>([]);
+    const [errorMessage, setErrorMessage] = useState("");
 
     async function loadSubmissions() {
 
         try {
             setLoading(true);
-
+            setErrorMessage("");
             const token = localStorage.getItem("token");
+
             if (!token) {
-                setErrorMessage("You must be logged in as an admin.");
+                setErrorMessage("You must be logged in");
                 return;
             }
 
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/submissions`, {
                 cache: "no-store",
                 headers: {
-                    "Authorization": `Bearer ${token}`
-                },
+                    Authorization: `Bearer ${token}`
+                }
             });
+
             if (!res.ok) {
                 const errorData = await res.json();
-                throw new Error(errorData.message || "Failed to load submissions");
+                throw new Error(errorData.message || "Failed to load submissions.");
             }
-            const submissionsData = await res.json();
-            setSubmissions(submissionsData);
+            const submissionData: Submission[] = await res.json();
+            setSubmissions(submissionData);
+
         }
         catch (error) {
             console.error("Loading submissions failed", error);
-
             if (error instanceof Error) {
                 setErrorMessage(error.message);
             }
@@ -59,7 +87,7 @@ export default function AdminSubmissionsPage() {
         finally {
             setLoading(false);
         }
-    };
+    }
 
     useEffect(() => {
         loadSubmissions();
@@ -67,64 +95,77 @@ export default function AdminSubmissionsPage() {
     );
 
     return (
-        <main className="min-h-screen p-8">
-            <div className="mx-auto max-w-2xl">
-                <h1 className="text-2xl font-bold">Admin Submissions</h1>
+        <main className={appPageClass}>
+            <section className={contentWrapperClass}>
+                <header className={pageHeaderClass}>
+                    <div className={pageHeaderTextClass}>
+                        <p className={pageLabelClass}>
+                            Admin Workplace
+                        </p>
+                        <h1 className={pageHeadingClass}>
+                            Submission review
+                        </h1>
+                        <p className={pageIntroClass}>
+                            Review client intake submissions, inpect submitted answers and update application statuses.
+                        </p>
+                    </div>
+                </header>
 
-                <ul className="mt-6 space-y-4">
-                    {
-                        errorMessage ? (
-                            <li
-                                role="alert"
-                                className="mt-4 rounded-md border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800">
-                                {errorMessage}
-                            </li>
-                        )
-                            : loading ?
-                                (
-                                    <li className="mt-4 text-sm text-slate-600 rounded-md border border-slate-300 bg-white p-4">
-                                        Loading submissions...
+                {
+                    errorMessage ? (
+                        <p role="alert" className={errorMessageClass}>
+                            {errorMessage}
+                        </p>
+                    ) : loading ? (
+                        <p className={loadingMessageClass}>
+                            Loading submision...
+                        </p>
+                    ) : submissions.length === 0 ? (
+                        <p className={emptyStateClass}>
+                            No submissions yet
+                        </p>
+                    ) : (
+                        <ul className={listPanelClass}>
+                            {
+                                submissions.map((submission) => (
+                                    <li key={submission.id} className={listRowClass}>
+                                        <div className={listRowContentClass}>
+                                            <h2 className={listRowTitleClass}>
+                                                Client submission
+                                            </h2>
+                                            <p className={listRowMetaClass}>
+                                                Submission ID: {""}
+                                                <span className={mutedCodeClass}>
+                                                    {submission.id}
+                                                </span>
+                                            </p>
+                                            <p className={listRowMetaClass}>
+                                                Workflow ID: {" "}
+                                                <span className={mutedCodeClass}>
+                                                    {submission.workflowId}
+                                                </span>
+                                            </p>
+                                            <p className={listRowMetaClass}>
+                                                Answers submitted: {submission.answers?.length ?? 0}
+                                            </p>
+                                        </div>
+                                        <div className={listRowActionClass}>
+                                            <span className={statusBadgeClass(submission.status)}>
+                                                {formatStatus(submission.status)}
+                                            </span>
+                                            <Link href={`/admin/submissions/${submission.id}`} className={secondaryActionClass}>
+                                                View submission
+                                            </Link>
+                                        </div>
                                     </li>
-                                ) :
-                                submissions.length === 0 ?
-                                    (
-                                        <li className="rounded border px-3 py-4 text-gray-600">
-                                            No submissions yet
-                                        </li>
-                                    )
-                                    : (
-                                        submissions.map((submission) => {
-                                            return (
-                                                <li key={submission.id} className="border rounded px-3 ">
-                                                    <div>
-                                                        Submission ID: {submission.id}
-                                                    </div>
-                                                    <div>
-                                                        Workflow ID: {submission.workflowId}
-                                                    </div>
-                                                    <div>
-                                                        Status: {submission.status}
-                                                    </div>
-                                                    <div>
-                                                        Answers:{" "} {submission.answers ? submission.answers.length : 0}
-                                                    </div>
-                                                    <Link
-                                                        href={`/admin/submissions/${submission.id}`}
-                                                        className="inline-flex items-center justify-center rounded-lg border 
-                                                            border-slate-300 bg-white px-3 py-2 text-sm mb-1
-                                                            font-medium text-slate-700 transition 
-                                                            hover:border-slate-400 hover:bg-slate-50"
-                                                    >View submission
-                                                    </Link>
-                                                </li>
-                                            )
-                                        })
-                                    )
-                    }
-                </ul>
-            </div>
+                                ))
+                            }
+
+                        </ul>
+                    )
+                }
+
+            </section>
         </main>
     )
-
-
 }
