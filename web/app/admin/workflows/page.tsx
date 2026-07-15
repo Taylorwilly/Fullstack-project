@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { primaryActionClass } from "@/app/components/ui";
 import DeleteWorkflowButton from "./DeleteWorkflowButton";
+import { useRouter } from "next/navigation";
 
 type Workflow = {
     id: string;
@@ -11,6 +12,7 @@ type Workflow = {
 };
 
 export default function WorkflowPage() {
+    const router = useRouter();
 
     const [workflows, setWorkflows] = useState<Workflow[]>([]);
     const [loading, setLoading] = useState(true);
@@ -18,8 +20,13 @@ export default function WorkflowPage() {
 
     async function loadWorkflows() {
         try {
-
             setLoading(true);
+
+            const token = localStorage.getItem("token");
+            if (!token) {
+                router.replace("/login");
+                return;
+            }
 
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workflows`);
 

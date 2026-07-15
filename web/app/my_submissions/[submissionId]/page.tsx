@@ -4,6 +4,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import LogoutButton from "@/app/components/LogoutButton";
 
 import {
     formatStatus,
@@ -157,12 +158,13 @@ export default function SubmissionPage({ params }: Props) {
         );
     }
     return (
-        <main>
+        <main className={appPageClass}>
             <section className={narrowContentWrapperClass}>
-                <div className="mb-6">
+                <div className="mb-6 flex flex-wrap justify-between">
                     <Link href="/my_submissions">
                         Back to My Submissions
                     </Link>
+                    <LogoutButton />
                 </div>
 
                 <header className="mb-6 space-y-2">

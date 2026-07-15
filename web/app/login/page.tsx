@@ -1,7 +1,8 @@
 "use client";
 import { useState, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
-import { primaryActionClass } from "../components/ui";
+import { primaryActionClass, secondaryActionClass, pageIntroClass } from "../components/ui";
+import Link from "next/link";
 
 type Registration = {
     email: string;
@@ -126,6 +127,14 @@ export default function LoginPage() {
                             >
                                 {isLoggingIn ? "Logging in..." : "Login"}
                             </button>
+
+                            <p className={pageIntroClass}>
+                                Don&apos;t have an account?
+                            </p>
+                            <Link href="/register" className={secondaryActionClass}>
+                                Create account
+                            </Link>
+
 
                             {
                                 errorMessage && (

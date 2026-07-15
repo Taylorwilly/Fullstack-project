@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { primaryActionClass } from "./ui";
+import LogoutButton from "./LogoutButton";
 
 const navigationItems = [
     {
@@ -65,9 +66,12 @@ export default function AdminNav() {
                     </nav>
                 </div>
 
+
                 <Link href="/admin/workflows/new" className={primaryActionClass}>
                     New Workflow
                 </Link>
+
+                <LogoutButton />
             </div>
         </header>
     )

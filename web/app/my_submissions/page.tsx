@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatStatus, statusBadgeClass, type SubmissionStatus } from "../components/status";
-
+import LogoutButton from "../components/LogoutButton";
 import {
     appPageClass,
     contentWrapperClass,
@@ -116,6 +116,7 @@ export default function ClientSubmissionPage() {
                     >
                         Start a submission
                     </Link>
+                    <LogoutButton />
                 </header>
                 <div className="overflow-hidden rounded-lg border border-[#d8ded7 bg-[#fffdf8] shadow-[0_8px_24px_rgba(36,51,46,0.06)]">
                     {
@@ -180,6 +181,8 @@ export default function ClientSubmissionPage() {
                                         </ul>
                                     )
                     }
+
+                    <LogoutButton />
                 </div>
 
 
