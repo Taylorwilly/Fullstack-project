@@ -15,11 +15,20 @@ type Props = {
     params: Promise<{ submissionId: string }>;
 }
 
+type SubmissionActivities = {
+    id: string;
+    submissionId: string;
+    action: string;
+    oldStatus: string;
+    newStatus: string;
+}
+
 type Submission = {
     id: string;
     workflowId: string;
     answers: SubmissionAnswer[];
     status: SubmissionStatus;
+    activities: SubmissionActivities;
 }
 type SubmissionAnswer = {
     id: string,
@@ -247,6 +256,8 @@ export default function SubmissionPage({ params }: Props) {
                                 const answer = submission.answers.find((answer) =>
                                     answer.stepId === step.id
                                 );
+
+                                const activity = submission.activities
                                 return (
                                     <li key={step.id} className={listRowClass}>
                                         <div className={listRowContentClass}>
@@ -257,6 +268,7 @@ export default function SubmissionPage({ params }: Props) {
                                                 {answer?.value ?? "No answer provided"}
                                             </p>
                                         </div>
+
                                     </li>
                                 )
                             })

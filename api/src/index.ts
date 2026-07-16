@@ -631,7 +631,7 @@ app.delete("/workflows/:workflowId/steps/:stepId", requireAuth, requireAdmin, as
                 return res.status(404).json({ message: "The step could not be found" });
             }
             if (error.message === "WORKFLOW_MISMATCH") {
-                return res.status(404).json({ message: "The workflows mismatch" });
+                return res.status(400).json({ message: "The workflows mismatch" });
             }
         }
         console.error("Failed to delete step", error);
@@ -864,6 +864,11 @@ app.get("/admin/submissions/:id", requireAuth, requireAdmin, async (req, res) =>
             },
             include: {
                 answers: true,
+                submissionActivity: {
+                    orderBy: {
+                        createdAt: "asc",
+                    }
+                }
             }
         });
         if (!submission) return res.status(404).json({ message: "Submission not found" });
@@ -901,68 +906,89 @@ app.post("/submissions", requireAuth, async (req, res) => {
         }
         //Define workflow Id and valid answer after validation by Zod
         const { workflowId, answers: validAnswer } = validation.data;
-        const workflow = await prisma.workflow.findUnique({
-            where: {
-                id: workflowId,
-            },
-            include: {
-                steps: true,
-            }
-        });
-        //We check if the workflow exists 
-        if (!workflow) return res.status(404).json({
-            message: "Failed to find workflow"
-        });
-        //Reject a workflow with no steps
-        if (workflow.steps.length === 0) {
-            return res.status(400).json({
-                message: "Cannot submit workflow with no steps"
-            });
-        }
-        const submittedStepIds = Object.keys(validAnswer);
 
-        const workflowStepIds = workflow.steps.map(step => step.id);
-
-        //We check if every submitted answer belongs to this workflow
-        const invalidStepIds = submittedStepIds.filter((stepId) =>
-            !workflowStepIds.includes(stepId));
-        //Check if every workflow step belongs to the submitted steps
-        const missingStepIds = workflowStepIds.filter((stepId) =>
-            !submittedStepIds.includes(stepId));
-
-        if (invalidStepIds.length > 0 || missingStepIds.length > 0) {
-            return res.status(400).json({
-                message: "Submitted answers do not match this workflow",
-                missingStepIds,
-                invalidStepIds,
-            });
-        }
-        const newSubmission = await prisma.submission.create({
-            data: {
-                userId,
-                workflowId,
-                status: "submitted",
-                answers: {
-                    create: Object.entries(validAnswer).map(([stepId, value]) => ({
-                        value,
-                        step: {
-                            connect: {
-                                id: stepId,
-                            },
-                        },
-                    })),
+        const result = await prisma.$transaction(async (tx) => {
+            const workflow = await tx.workflow.findUnique({
+                where: {
+                    id: workflowId,
                 },
-            },
-            include: {
-                answers: true,
+                include: {
+                    steps: true,
+                }
+            });
+            //We check if the workflow exists 
+            if (!workflow) {
+                throw new Error("WORKFLOW_NOT_FOUND");
             }
+            //Reject a workflow with no steps
+            if (workflow.steps.length === 0) {
+                throw new Error("WORKFLOW_HAS_NO_STEPS");
+            }
+            const submittedStepIds = Object.keys(validAnswer);
+
+            const workflowStepIds = workflow.steps.map(step => step.id);
+
+            //We check if every submitted answer belongs to this workflow
+            const invalidStepIds = submittedStepIds.filter((stepId) =>
+                !workflowStepIds.includes(stepId));
+            //Check if every workflow step belongs to the submitted steps
+            const missingStepIds = workflowStepIds.filter((stepId) =>
+                !submittedStepIds.includes(stepId));
+
+            if (invalidStepIds.length > 0 || missingStepIds.length > 0) {
+                throw new Error("SUBMISSION_ANSWER_DOES_NOT_MATCH_THIS_WORKFLOW");
+            };
+
+            const newSubmission = await tx.submission.create({
+                data: {
+                    userId,
+                    workflowId,
+                    status: "submitted",
+                    answers: {
+                        create: Object.entries(validAnswer).map(([stepId, value]) => ({
+                            value,
+                            step: {
+                                connect: {
+                                    id: stepId,
+                                },
+                            },
+                        })),
+                    },
+                },
+                include: {
+                    answers: true,
+                }
+            });
+            // Create log row in the database
+            await tx.submissionActivity.create({
+                data: {
+                    userId,
+                    submissionId: newSubmission.id,
+                    action: "SUBMITTED",
+                    oldStatus: null,
+                    newStatus: "submitted",
+                }
+            });
+            return newSubmission;
+
         });
         return res.status(201).json({
             message: "Submission succeeded",
-            newSubmission,
+            newSubmission: result,
         });
     }
     catch (error) {
+        if (error instanceof Error) {
+            if (error.message === "WORKFLOW_NOT_FOUND") {
+                return res.status(404).json({ message: "The workflow could not be found" });
+            }
+            if (error.message === "WORKFLOW_HAS_NO_STEPS") {
+                return res.status(400).json({ message: "Cannot submit workflow with no steps" });
+            }
+            if (error.message === "SUBMISSION_ANSWER_DOES_NOT_MATCH_THIS_WORKFLOW") {
+                return res.status(400).json({ message: "Submitted answers do not match this workflow" });
+            }
+        }
         console.error("Failed to submit answer", error);
         return res.status(500).json({ message: "Failed to submit answer" });
     }
@@ -1005,9 +1031,13 @@ app.get("/submissions/:id", requireAuth, async (req, res) => {
 
 //Only an admin can update the status
 app.patch("/submissions/:id/status", requireAuth, requireAdmin, async (req, res) => {
-
+    if (!req.authenticatedUser) {
+        return res.status(401).json({ message: "Authentication token is required" });
+    }
+    const userId = req.authenticatedUser.userId;
     try {
         const idValidation = submissionIdSchema.safeParse(req.params);
+
         if (!idValidation.success) return res.status(400).json({
             message: "id must be cuid type",
             errors: idValidation.error.issues.map((issue) => ({
@@ -1036,28 +1066,49 @@ app.patch("/submissions/:id/status", requireAuth, requireAdmin, async (req, res)
         //We use the validated value now
         const { status } = validation.data
 
-        //Check if a submission exists with the request's id
-        const submission = await prisma.submission.findUnique({
-            where: {
-                id,
-            }
-        })
-        if (!submission) return res.status(404).json({ message: "No submission found" });
 
-        const updatedSubmission = await prisma.submission.update({
-            where: {
-                id,
-            },
-            data: {
-                status: status,
-            }
+        // Start a transaction
+        const result = await prisma.$transaction(async (tx) => {
+
+            //Check if a submission exists with the request's id
+            const submission = await tx.submission.findUnique({
+                where: {
+                    id,
+                }
+            })
+            if (!submission) throw new Error("SUBMISSION_NOT_FOUND");
+
+            const updatedSubmission = await tx.submission.update({
+                where: {
+                    id,
+                },
+                data: {
+                    status,
+                }
+            });
+
+            await tx.submissionActivity.create({
+                data: {
+                    action: "STATUS_CHANGED",
+                    oldStatus: submission.status,
+                    newStatus: updatedSubmission.status,
+                    userId,
+                    submissionId: updatedSubmission.id,
+                }
+            })
+            return updatedSubmission;
         })
         return res.status(200).json({
             message: "Status changed",
-            updatedSubmission,
+            updatedSubmission: result,
         })
     }
     catch (error) {
+        if (error instanceof Error) {
+            if (error.message === "SUBMISSION_NOT_FOUND") {
+                return res.status(404).json({ message: "Submission not found" });
+            }
+        }
         console.error("Failed to update status", error);
         return res.status(500).json({ message: "Failed to update status" });
     }

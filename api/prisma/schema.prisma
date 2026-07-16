@@ -19,14 +19,15 @@ enum Role {
 }
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
-  name         String?
-  passwordHash String
-  role         Role         @default(CLIENT)
-  submissions  Submission[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id                 String               @id @default(cuid())
+  email              String               @unique
+  name               String?
+  passwordHash       String
+  role               Role                 @default(CLIENT)
+  submissions        Submission[]
+  submissionActivity SubmissionActivity[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 }
 
 model Workflow {
@@ -51,15 +52,16 @@ model WorkflowStep {
 }
 
 model Submission {
-  id         String             @id @default(cuid())
+  id         String               @id @default(cuid())
   userId     String?
   workflowId String
   status     String
-  user       User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
-  workflow   Workflow           @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  user       User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  workflow   Workflow             @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   answers    SubmissionAnswer[]
-  createdAt  DateTime           @default(now())
-  updatedAt  DateTime           @updatedAt
+  activities SubmissionActivity[]
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
 }
 
 model SubmissionAnswer {
@@ -70,4 +72,19 @@ model SubmissionAnswer {
   submission   Submission   @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   step         WorkflowStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
   createdAt    DateTime     @default(now())
+}
+
+model SubmissionActivity {
+  id           String     @id @default(cuid())
+  userId       String?
+  submissionId String
+  action       String
+  oldStatus    String?
+  newStatus    String
+  user         User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@index([submissionId])
+  @@index([userId])
 }

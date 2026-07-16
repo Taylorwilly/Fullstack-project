@@ -226,7 +226,7 @@ export default function SubmissionPage({ params }: Props) {
                                         <li key={step.id} className={listRowClass}>
                                             <div className={listRowContentClass}>
                                                 <h3 className={listRowTitleClass}>
-                                                    {step.id}
+                                                    {step.title}
                                                 </h3>
                                                 <p className={listRowMetaClass}>
                                                     {answer?.value ?? "No answer provided"}

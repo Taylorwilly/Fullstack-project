@@ -93,7 +93,7 @@ export default function LoginPage() {
                         Sign in to continue
                     </h1>
                     <p className="mt-3 text-smleading-6 text-slate-600">
-                        Access your intake forms, saved your submission, and see your application updates
+                        Access your intake forms, saved submissions, and application updates.
                     </p>
 
                     <form
@@ -101,7 +101,6 @@ export default function LoginPage() {
                         className="mt-8 border border-slate-200 bg-white p-6"
                     >
                         <fieldset className="border px-3 ml-3 mr-48 py-2">
-                            <legend>Login page</legend>
                             <label className="mt-6">Email:</label>
                             <input
                                 type="email"
@@ -128,13 +127,14 @@ export default function LoginPage() {
                                 {isLoggingIn ? "Logging in..." : "Login"}
                             </button>
 
-                            <p className={pageIntroClass}>
-                                Don&apos;t have an account?
-                            </p>
-                            <Link href="/register" className={secondaryActionClass}>
-                                Create account
-                            </Link>
-
+                            <div className="mt-4">
+                                <p className={pageIntroClass}>
+                                    Don&apos;t have an account?
+                                </p>
+                                <Link href="/register" className={`${secondaryActionClass} mt-4`}>
+                                    Create an account
+                                </Link>
+                            </div>
 
                             {
                                 errorMessage && (

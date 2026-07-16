@@ -181,8 +181,6 @@ export default function ClientSubmissionPage() {
                                         </ul>
                                     )
                     }
-
-                    <LogoutButton />
                 </div>
 
 

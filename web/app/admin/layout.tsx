@@ -1,6 +1,6 @@
 
 import AdminNav from "@/app/components/AdminNav";
-import type { ReactNode } from "react";
+import  {type ReactNode } from "react";
 
 type AdminLayoutProps = {
     children: ReactNode;
