@@ -9,43 +9,45 @@ import {
     type SubmissionStatus,
     statusBadgeClass
 } from "@/app/components/status";
-import { appPageClass, listPanelClass, listRowClass, listRowContentClass, listRowMetaClass, listRowTitleClass, mutedCodeClass, narrowContentWrapperClass, pageHeadingClass, pageIntroClass, pageLabelClass, panelClass, panelTextClass, panelTitleClass, secondaryActionClass } from "@/app/components/ui";
+import { appPageClass, emptyStateClass, listPanelClass, listRowClass, listRowContentClass, listRowMetaClass, listRowTitleClass, mutedCodeClass, narrowContentWrapperClass, pageHeadingClass, pageIntroClass, pageLabelClass, panelClass, panelTextClass, panelTitleClass, secondaryActionClass, sectionClass, sectionHeaderClass, sectionHeadingClass, sectionTextClass } from "@/app/components/ui";
 
 type Props = {
     params: Promise<{ submissionId: string }>;
-}
+};
 
-type SubmissionActivities = {
+type SubmissionActivity = {
     id: string;
+    userId: string | null;
     submissionId: string;
     action: string;
-    oldStatus: string;
-    newStatus: string;
-}
+    oldStatus: SubmissionStatus | null;
+    newStatus: SubmissionStatus;
+    createdAt: string;
+};
 
 type Submission = {
     id: string;
     workflowId: string;
     answers: SubmissionAnswer[];
     status: SubmissionStatus;
-    activities: SubmissionActivities;
-}
+    activities: SubmissionActivity[];
+};
 type SubmissionAnswer = {
     id: string,
     stepId: string,
     value: string,
-}
+};
 type WorkflowStep = {
     id: string;
     workflowId: string;
     title: string;
     order: number;
-}
+};
 type Workflow = {
     id: string;
     name: string;
     steps: WorkflowStep[];
-}
+};
 
 export default function SubmissionPage({ params }: Props) {
     const router = useRouter();
@@ -167,6 +169,7 @@ export default function SubmissionPage({ params }: Props) {
         )
     }
 
+    const activities = submission.activities ?? [];
     return (
         <main className={appPageClass}>
             <section className={narrowContentWrapperClass}>
@@ -257,7 +260,7 @@ export default function SubmissionPage({ params }: Props) {
                                     answer.stepId === step.id
                                 );
 
-                                const activity = submission.activities
+
                                 return (
                                     <li key={step.id} className={listRowClass}>
                                         <div className={listRowContentClass}>
@@ -274,6 +277,50 @@ export default function SubmissionPage({ params }: Props) {
                             })
                         }
                     </ul>
+                </section>
+
+                <section className={sectionClass}>
+                    <div className={sectionHeaderClass}>
+                        <h2 className={sectionHeadingClass}>
+                            Activity history
+                        </h2>
+                        <p className={sectionTextClass}>
+                            A timeline of status changes for this submission.
+                        </p>
+                    </div>
+
+                    {
+                        activities.length === 0 ? (
+                            <p className={emptyStateClass}>
+                                No submission activities yet
+                            </p>
+                        ) : (
+                            <div className={listPanelClass}>
+                                {activities.map((activity) => (
+                                    <div key={activity.id} className="px-5 py-4">
+                                        <p className="mt-1 text-sm text-[#66736d]">
+                                            {activity.action === "SUBMITTED" ?
+                                                "Submission created"
+                                                : "Status changed"
+                                            }
+                                        </p>
+
+                                        <p className="mt-1 text-xs text-[#66736d]">
+                                            {
+                                                activity.oldStatus === null ?
+                                                    `Status set to ${formatStatus(activity.newStatus)}`
+                                                    : `${formatStatus(activity.oldStatus)} -> ${formatStatus(activity.newStatus)}`
+                                            }
+                                        </p>
+
+                                        <p className="mt-1 text-xs text-[#66736d]">
+                                            {new Date(activity.createdAt).toLocaleString()}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        )
+                    }
                 </section>
             </section>
         </main>

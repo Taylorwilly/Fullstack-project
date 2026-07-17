@@ -864,7 +864,7 @@ app.get("/admin/submissions/:id", requireAuth, requireAdmin, async (req, res) =>
             },
             include: {
                 answers: true,
-                submissionActivity: {
+                activities: {
                     orderBy: {
                         createdAt: "asc",
                     }
@@ -1015,6 +1015,11 @@ app.get("/submissions/:id", requireAuth, async (req, res) => {
             },
             include: {
                 answers: true,
+                activities: {
+                    orderBy: {
+                        createdAt: "asc",
+                    }
+                }
             }
         });
         //Also returns 404 when the submission belongs to someone else

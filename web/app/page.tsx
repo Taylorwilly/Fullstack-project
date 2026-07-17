@@ -25,7 +25,7 @@ export default function Home() {
                             IntakeFlow helps teams collect, review, and manage client intake submissions
                         </h1>
                         <p className={`${pageIntroClass} mt-5 text-base`}>
-                            This is a deployed workflow application platform where administrators manage workflows and review submissions, and client complete structured forms.
+                            This is a deployed workflow application platform where administrators manage workflows and review submissions, while clients complete structured forms.
                         </p>
                         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                             <Link href="/login" className={primaryActionClass}>
@@ -49,7 +49,7 @@ export default function Home() {
                                     1. Admin builds workflows
                                 </h2>
                                 <p className={`${panelTextClass} mt-2`}>
-                                    Admins create workflows, manage steps, review submissions, and update statuses like In Review, Approved, or Rejected.
+                                    Admins create reusable workflows and define the steps clients need to complete.
                                 </p>
                             </div>
 
@@ -64,10 +64,10 @@ export default function Home() {
 
                             <div className={panelClass}>
                                 <h2 className={panelTitleClass}>
-                                    3. Admin Reviews submissions
+                                    3. Admin reviews submissions
                                 </h2>
                                 <p className={`${panelTextClass} mt-2`}>
-                                    Admins create workflows, manage steps, review submissions, and update statuses like In Review, Approved, or Rejected.
+                                    Admins review submitted answers and update each application as In Review, Approved, or Rejected.
                                 </p>
                             </div>
                         </div>

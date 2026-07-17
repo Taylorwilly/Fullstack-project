@@ -12,16 +12,28 @@ import {
     statusBadgeClass,
     type SubmissionStatus
 } from "@/app/components/status"
-import { appPageClass, emptyStateClass, errorMessageClass, listPanelClass, listRowClass, listRowContentClass, listRowMetaClass, listRowTitleClass, loadingMessageClass, mutedCodeClass, narrowContentWrapperClass, pageHeadingClass, pageIntroClass, pageLabelClass, panelClass, panelTextClass, panelTitleClass, secondaryActionClass } from "@/app/components/ui";
+import { appPageClass, emptyStateClass, errorMessageClass, listPanelClass, listRowClass, listRowContentClass, listRowMetaClass, listRowTitleClass, loadingMessageClass, mutedCodeClass, narrowContentWrapperClass, pageHeadingClass, pageIntroClass, pageLabelClass, panelClass, panelTextClass, panelTitleClass, secondaryActionClass, sectionClass, sectionHeaderClass, sectionHeadingClass, sectionTextClass } from "@/app/components/ui";
 type Props = {
     params: Promise<{ submissionId: string }>;
 }
+
+type SubmissionActivity = {
+    id: string;
+    userId: string | null;
+    submissionId: string;
+    action: string;
+    oldStatus: SubmissionStatus | null;
+    newStatus: SubmissionStatus;
+    createdAt: string;
+};
 
 type Submission = {
     id: string;
     workflowId: string;
     answers: SubmissionAnswer[];
     status: SubmissionStatus;
+    activities?: SubmissionActivity[];
+    createdAt: string;
 }
 
 type SubmissionAnswer = {
@@ -157,6 +169,8 @@ export default function SubmissionPage({ params }: Props) {
             </main>
         );
     }
+
+    const activities = submission.activities ?? [];
     return (
         <main className={appPageClass}>
             <section className={narrowContentWrapperClass}>
@@ -190,16 +204,9 @@ export default function SubmissionPage({ params }: Props) {
 
                             <div>
                                 <p className={panelTextClass}>
-                                    Application ID: {" "}
+                                    Reference ID: {" "}
                                     <span className={mutedCodeClass}>
                                         {submission.id}
-                                    </span>
-                                </p>
-
-                                <p className={panelTextClass}>
-                                    Workflow ID: {" "}
-                                    <span className={mutedCodeClass}>
-                                        {submission.workflowId}
                                     </span>
                                 </p>
                             </div>
@@ -209,6 +216,7 @@ export default function SubmissionPage({ params }: Props) {
                         </span>
                     </div>
                 </div>
+
                 <section className="mt-6">
                     <div className="mb-4">
                         <h2 className={panelTitleClass}>
@@ -226,7 +234,7 @@ export default function SubmissionPage({ params }: Props) {
                                         <li key={step.id} className={listRowClass}>
                                             <div className={listRowContentClass}>
                                                 <h3 className={listRowTitleClass}>
-                                                    {step.title}
+                                                    {step?.title ?? "Unknown step"}
                                                 </h3>
                                                 <p className={listRowMetaClass}>
                                                     {answer?.value ?? "No answer provided"}
@@ -239,9 +247,51 @@ export default function SubmissionPage({ params }: Props) {
                         </ul>
                     </div>
                 </section>
+
+                <section className={sectionClass}>
+                    <div className={sectionHeaderClass}>
+                        <h2 className={sectionHeadingClass}>
+                            Activity history
+                        </h2>
+                        <p className={sectionTextClass}>
+                            A timeline of status changes for your submission.
+                        </p>
+                    </div>
+
+                    {
+                        activities.length === 0 ? (
+                            <p className={emptyStateClass}>
+                                No submission activities yet
+                            </p>
+                        ) : (
+                            <div className={listPanelClass}>
+                                {activities.map((activity) => (
+                                    <div key={activity.id} className="px-5 py-4">
+                                        <p className="mt-1 text-sm text-[#66736d]">
+                                            {activity.action === "SUBMITTED" ?
+                                                "Submission created"
+                                                : "Status changed"
+                                            }
+                                        </p>
+
+                                        <p className="mt-1 text-xs text-[#66736d]">
+                                            {
+                                                activity.oldStatus === null ?
+                                                    `Status set to ${formatStatus(activity.newStatus)}`
+                                                    : `${formatStatus(activity.oldStatus)} -> ${formatStatus(activity.newStatus)}`
+                                            }
+                                        </p>
+
+                                        <p className="mt-1 text-xs text-[#66736d]">
+                                            {new Date(activity.createdAt).toLocaleString()}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        )
+                    }
+                </section>
             </section>
         </main>
-
     )
-
 }
