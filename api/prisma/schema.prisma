@@ -18,6 +18,18 @@ enum Role {
   @@map("user_role")
 }
 
+enum FieldType {
+  TEXT
+  TEXTAREA
+  NUMBER
+  DATE
+  EMAIL
+  PHONE
+  RADIO
+  SELECT
+  CHECKBOX
+}
+
 model User {
   id                 String               @id @default(cuid())
   email              String               @unique
@@ -36,8 +48,41 @@ model Workflow {
   description String?
   steps       WorkflowStep[]
   submissions Submission[]
+  pages       WorkflowPage[]
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+}
+
+model WorkflowPage {
+  id         String          @id @default(cuid())
+  workflowId String
+  title      String
+  order      Int
+  workflow   Workflow        @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  fields     WorkflowField[]
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@unique([workflowId, order])
+  @@index([workflowId])
+}
+
+model WorkflowField {
+  id          String       @id @default(cuid())
+  pageId      String
+  label       String
+  fieldType   FieldType    @default(TEXT)
+  required    Boolean      @default(true)
+  placeholder String?
+  helpText    String?
+  order       Int
+  options     Json?
+  page        WorkflowPage @relation(fields: [pageId], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([pageId, order])
+  @@index([pageId])
 }
 
 model WorkflowStep {
@@ -45,7 +90,7 @@ model WorkflowStep {
   workflowId String
   title      String
   order      Int
-  workflow   Workflow           @relation(fields: [workflowId], references: id, onDelete: Cascade)
+  workflow   Workflow           @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   answers    SubmissionAnswer[]
   createdAt  DateTime           @default(now())
   updatedAt  DateTime           @updatedAt
@@ -71,7 +116,8 @@ model SubmissionAnswer {
   value        String
   submission   Submission   @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   step         WorkflowStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
-  createdAt    DateTime     @default(now())
+
+  createdAt DateTime @default(now())
 }
 
 model SubmissionActivity {
