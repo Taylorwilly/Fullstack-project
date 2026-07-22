@@ -468,7 +468,7 @@ app.post("/workflows/:id/steps", requireAuth, requireAdmin, async (req, res) => 
     const { id } = req.params;
     const { title } = req.body;
 
-    if (!title || !title.trim()) {
+    if (typeof title !== "string" || !title.trim()) {
         return res.status(400).json({ message: "Step title is required" });
     }
     //We find the corresponding workflow in the database
@@ -517,9 +517,14 @@ app.patch("/workflows/:workflowId/steps/:stepId", requireAuth, requireAdmin, asy
 
     try {
         if (typeof stepId !== "string" || typeof workflowId !== "string") {
-            return res.status(400).json({ message: "Workflow Id must be a string" })
+            return res.status(400).json({
+                message: "Workflow Id and step Is must be string"
+            })
         }
-        if (!title || !title.trim()) return res.status(400).json({ message: "The title is required" });
+        if (typeof title !== "string" || !title.trim())
+            return res.status(400).json({
+                message: "The title is required"
+            });
 
         const workflow = await prisma.workflow.findUnique({
             where: {
@@ -534,7 +539,10 @@ app.patch("/workflows/:workflowId/steps/:stepId", requireAuth, requireAdmin, asy
             },
         });
 
-        if (!step) return res.status(404).json({ message: "Step not found" });
+        if (!step)
+            return res.status(404).json({
+                message: "Step not found"
+            });
 
         //Prevent using a step from another workflow
         if (step.workflowId !== workflowId) return res.status(400).json({
@@ -867,7 +875,7 @@ app.get("/admin/submissions/:id", requireAuth, requireAdmin, async (req, res) =>
                 activities: {
                     orderBy: {
                         createdAt: "asc",
-                    }
+                    },
                 }
             }
         });
@@ -1119,6 +1127,558 @@ app.patch("/submissions/:id/status", requireAuth, requireAdmin, async (req, res)
     }
 
 })
+
+// Create workflow pages
+app.post("/workflows/:workflowId/pages", requireAuth, requireAdmin, async (req, res) => {
+
+    const { workflowId } = req.params;
+    const { title } = req.body;
+
+    if (typeof title !== "string" || !title.trim()) {
+        return res.status(400).json({
+            message: "The title is required.",
+        });
+    }
+
+    if (typeof workflowId !== "string") {
+        return res.status(400).json({
+            message: "WorkflowId must be a string."
+        })
+    }
+
+    try {
+        const page = await prisma.$transaction(async (tx) => {
+            const existingWorkflow = await tx.workflow.findUnique({
+                where: {
+                    id: workflowId,
+                }
+            });
+
+            if (!existingWorkflow) {
+                throw new Error("WORKFLOW_NOT_FOUND");
+            }
+
+            const lastWorkflow = await tx.workflowPage.findFirst({
+                where: {
+                    workflowId,
+                },
+                orderBy: {
+                    order: "desc"
+                }
+            })
+
+            const createdPage = await tx.workflowPage.create({
+                data: {
+                    workflowId,
+                    title,
+                    order: lastWorkflow ? lastWorkflow.order + 1 : 1,
+                },
+            });
+            return createdPage;
+        })
+        return res.status(201).json({
+            message: "Workflow page created successfully",
+            page,
+        })
+    }
+    catch (error) {
+        if (error instanceof Error) {
+            if (error.message === "WORKFLOW_NOT_FOUND") {
+                return res.status(404).json({
+                    message: "Workflow not found",
+                })
+            }
+        }
+        console.error("Workflow page not created", error);
+
+        return res.status(500).json({
+            message: "Failed to create the workflow page",
+
+        });
+    }
+});
+
+//Update pages
+app.patch("/workflows/:workflowId/pages/:pageId", requireAuth, requireAdmin, async (req, res) => {
+    const { workflowId, pageId } = req.params;
+
+    const { title } = req.body;
+
+    if (typeof workflowId !== "string" || typeof pageId !== "string") {
+        return res.status(400).json({
+            message: "The workflow Id and page Id must be string",
+        });
+    }
+    if (typeof title !== "string" || !title.trim()) {
+        return res.status(400).json({
+            message: "The title is required",
+        })
+    }
+
+    try {
+        const existingWorkflow = await prisma.workflow.findUnique({
+            where: {
+                id: workflowId,
+            }
+        });
+
+        if (!existingWorkflow) {
+            return res.status(404).json({ message: "Workflow not found" })
+        }
+
+        const existingPage = await prisma.workflowPage.findUnique({
+            where: {
+                id: pageId,
+            }
+        }
+        );
+
+        if (!existingPage) {
+            return res.status(404).json({
+                message: "Workflow page not found",
+            })
+        }
+
+        if (existingPage.workflowId !== workflowId) {
+            return res.status(400).json({
+                message: "This page does not belong to this workflow"
+            });
+        }
+
+        const updatedPage = await prisma.workflowPage.update({
+            where: {
+                id: pageId
+            },
+            data: {
+                title: title.trim(),
+            }
+        });
+
+        return res.status(200).json({
+            message: "Page updated successfully",
+            page: updatedPage,
+        });
+    }
+    catch (error) {
+        console.error("Failed to update page", error);
+        return res.status(500).json({
+            message: "Failed to update page",
+        });
+    }
+});
+
+//Delete pages
+app.delete("/workflows/:workflowId/pages/:pageId", requireAuth, requireAdmin, async (req, res) => {
+    const { workflowId, pageId } = req.params;
+
+    if (typeof workflowId !== "string" || typeof pageId !== "string") {
+        return res.status(400).json({
+            message: "The workflow Id and page Id must be strings"
+        })
+    }
+
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            const workflow = await tx.workflow.findUnique({
+                where: {
+                    id: workflowId
+                }
+            });
+
+            if (!workflow) {
+                throw new Error("WORKFLOW_NOT_FOUND");
+            }
+
+            const page = await tx.workflowPage.findUnique({
+                where: {
+                    id: pageId,
+                }
+            });
+
+            if (!page) {
+                throw new Error("PAGE_NOT_FOUND");
+            }
+
+            if (page.workflowId !== workflowId) {
+                throw new Error("THIS_PAGE_DOES_NOT_BELONG_TO_THIS_WORKFLOW");
+            }
+
+            const deletedPage = await tx.workflowPage.delete({
+                where: {
+                    id: pageId,
+                }
+            });
+
+            const remainingPages = await tx.workflowPage.findMany({
+                where: {
+                    workflowId,
+                },
+                orderBy: {
+                    order: "asc"
+                }
+            });
+
+            const updatedPages = await Promise.all(
+                remainingPages.map((page, index) =>
+                    tx.workflowPage.update({
+                        where: {
+                            id: page.id,
+                        },
+                        data: {
+                            order: index + 1,
+                        }
+                    })
+                )
+            )
+
+            return { deletedPage, updatedPages };
+        });
+        return res.status(200).json({
+            message: "Page deleted successfully",
+            deletedPage: result.deletedPage,
+            updatedPage: result.updatedPages,
+        })
+    }
+    catch (error) {
+        if (error instanceof Error) {
+            if (error.message === "WORKFLOW_NOT_FOUND") {
+                return res.status(404).json({ message: "Workflow not found" });
+            }
+            if (error.message === "PAGE_NOT_FOUND") {
+                return res.status(404).json({ message: "Page not found" });
+            }
+            if (error.message === "THIS_PAGE_DOES_NOT_BELONG_TO_THIS_WORKFLOW") {
+                return res.status(400).json({ message: "Page mismatch" });
+            }
+        }
+
+        console.error("Failed to delete page", error);
+
+        return res.status(500).json({ message: "Failed to delete page" });
+    }
+});
+
+//Create fields
+app.post("/workflows/:workflowId/pages/:pageId/fields", requireAuth, requireAdmin, async (req, res) => {
+    //Get workflow ID and page ID from the URL
+    const { workflowId, pageId } = req.params;
+    //Get field label from request
+    const { label } = req.body;
+
+    if (typeof workflowId !== "string" || typeof pageId !== "string") {
+        return res.status(400).json({
+            message: "The workflow Id and page Id must be strings",
+        });
+    }
+
+    if (typeof label !== "string" || !label.trim()) {
+        return res.status(400).json({
+            message: "The label is required"
+        })
+    }
+
+    try {
+        //Start a transaction because to create a field needs checking 
+        // the workflow, the page, and calculating the next order
+        const result = await prisma.$transaction(async (tx) => {
+            const workflow = await tx.workflow.findUnique({
+                where: {
+                    id: workflowId,
+                }
+            });
+
+            if (!workflow) {
+                throw new Error("WORKFLOW_NOT_FOUND");
+
+            }
+
+            const page = await tx.workflowPage.findUnique({
+                where: {
+                    id: pageId,
+                }
+            });
+
+            if (!page) {
+                throw new Error("PAGE_NOT_FOUND");
+            }
+
+            if (page.workflowId !== workflowId) {
+                throw new Error("PAGE_MISMATCH");
+            }
+
+            const lastField = await tx.workflowField.findFirst({
+                where: {
+                    pageId,
+                },
+                orderBy: {
+                    order: "desc",
+                }
+            });
+            //Create a new field and give it order 1 if there are not fields yet
+            //Otherwise it becomes the next order number
+            const fieldCreated = await tx.workflowField.create({
+                data: {
+                    pageId,
+                    label: label.trim(),
+                    order: lastField ? lastField.order + 1 : 1,
+                }
+            });
+
+            return fieldCreated;
+        });
+        return res.status(201).json({
+            message: "Field created successfully",
+            field: result,
+        })
+    } catch (error) {
+        if (error instanceof Error) {
+            if (error.message === "WORKFLOW_NOT_FOUND") {
+                return res.status(404).json({
+                    message: "No workflow found",
+                });
+            }
+            if (error.message === "PAGE_NOT_FOUND") {
+                return res.status(404).json({
+                    message: "No page found",
+                });
+            }
+            if (error.message === "PAGE_MISMATCH") {
+                return res.status(400).json({
+                    message: "This page does not belong to this workflow",
+                });
+            }
+        }
+
+        console.error("Failed to create field", error);
+
+        return res.status(500).json({
+            message: "Failed to create field",
+        })
+
+    }
+});
+
+// Update fields
+app.patch("/workflows/:workflowId/pages/:pageId/fields/:fieldId", requireAuth, requireAdmin, async (req, res) => {
+
+    const { workflowId, pageId, fieldId } = req.params;
+    const { label } = req.body;
+
+    if (typeof workflowId !== "string"
+        || typeof pageId !== "string"
+        || typeof fieldId !== "string") {
+        return res.status(400).json({
+            message: "Workflow ID, page ID, and field ID must be strings"
+        })
+    };
+
+    if (typeof label !== "string" || !label.trim()) {
+        return res.status(400).json({
+            message: "Label is required",
+        })
+    }
+
+    try {
+
+        const workflow = await prisma.workflow.findUnique({
+            where: {
+                id: workflowId,
+            }
+        });
+        if (!workflow) {
+            return res.status(404).json({
+                message: "Workflow not found",
+            })
+        }
+
+        const page = await prisma.workflowPage.findUnique({
+            where: {
+                id: pageId,
+            }
+        });
+        if (!page) {
+            return res.status(404).json({
+                message: "Page not found",
+            })
+        }
+
+        if (page.workflowId !== workflowId) {
+            return res.status(400).json({
+                message: "This page does not belong to this workflow",
+            })
+        }
+
+        const field = await prisma.workflowField.findUnique({
+            where: {
+                id: fieldId,
+            }
+        });
+        if (!field) {
+            return res.status(404).json({
+                message: "Field not found",
+            });
+        }
+
+        if (field.pageId !== pageId) {
+            return res.status(400).json({
+                message: "This field does not belong to this page",
+            })
+        }
+
+        const updatedField = await prisma.workflowField.update({
+            where: {
+                id: fieldId,
+            },
+            data: {
+                label: label.trim(),
+            }
+        });
+
+        return res.status(200).json({
+            message: "Field updated successfully",
+            field: updatedField,
+        })
+    }
+    catch (error) {
+        console.error("Failed to update the field", error);
+        return res.status(500).json({
+            message: "Failed to update the field",
+        });
+    }
+
+});
+
+app.delete("/workflows/:workflowId/pages/:pageId/fields/:fieldId", requireAuth, requireAdmin, async (req, res) => {
+    const { workflowId, pageId, fieldId } = req.params;
+
+    if (typeof workflowId !== "string"
+        || typeof pageId !== "string"
+        || typeof fieldId !== "string") {
+        return res.status(400).json({
+            message: "Workflow ID, page ID, and field ID must be strings"
+        })
+    };
+
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+
+            const workflow = await tx.workflow.findUnique({
+                where: {
+                    id: workflowId,
+                }
+            });
+            if (!workflow) {
+                throw new Error("WORKFLOW_NOT_FOUND");
+            }
+
+            const page = await tx.workflowPage.findUnique({
+                where: {
+                    id: pageId,
+                }
+            });
+            if (!page) {
+                throw new Error("PAGE_NOT_FOUND");
+            }
+
+            if (page.workflowId !== workflowId) {
+                throw new Error("PAGE_MISMATCH");
+            }
+
+            const field = await tx.workflowField.findUnique({
+                where: {
+                    id: fieldId,
+                }
+            });
+            if (!field) {
+                throw new Error("FIELD_NOT_FOUND");
+            }
+
+            if (field.pageId !== pageId) {
+                throw new Error("FIELD_MISMATCH");
+            }
+
+            const deletedField = await tx.workflowField.delete({
+                where: {
+                    id: fieldId,
+                }
+            });
+
+            const remainingFields = await tx.workflowField.findMany({
+                where: {
+                    pageId,
+                },
+                orderBy: {
+                    order: "asc",
+                }
+            });
+
+            const updatedOrder = [];
+
+            for (const [index, field] of remainingFields.entries()) {
+                const newOrder = index + 1;
+
+                if (field.order === newOrder) {
+                    updatedOrder.push(field);
+                    continue;
+                };
+
+                const updatedField = await tx.workflowField.update({
+                    where: {
+                        id: field.id,
+                    },
+                    data: {
+                        order: newOrder,
+                    }
+                });
+                updatedOrder.push(updatedField);
+            }
+
+            return { deletedField, updatedOrder };
+        });
+        return res.status(200).json({
+            message: "Field deleted successfully",
+            deletedField: result.deletedField,
+            field: result.updatedOrder,
+        });
+    }
+    catch (error) {
+        if (error instanceof Error) {
+            if (error.message === "WORKFLOW_NOT_FOUND") {
+                return res.status(404).json({
+                    message: "Workflow not found",
+                })
+            }
+            if (error.message === "PAGE_NOT_FOUND") {
+                return res.status(404).json({
+                    message: "Page not found",
+                })
+            }
+            if (error.message === "PAGE_MISMATCH") {
+                return res.status(400).json({
+                    message: "This page does not belong to this workflow",
+                })
+            }
+            if (error.message === "FIELD_NOT_FOUND") {
+                return res.status(404).json({
+                    message: "Field not found",
+                })
+            }
+            if (error.message === "FIELD_MISMATCH") {
+                return res.status(400).json({
+                    message: "This field does not belong to this page",
+                })
+            }
+        };
+
+        console.error("Failed to delete field", error);
+        return res.status(500).json({
+            message: "Failed to delete field",
+        })
+
+    }
+
+})
+
 
 const PORT = Number(process.env.PORT) || 4000;
 app.listen(PORT, "0.0.0.0", () => {

@@ -77,7 +77,7 @@ model WorkflowField {
   helpText    String?
   order       Int
   options     Json?
-  page        WorkflowPage @relation(fields: [pageId], references: [id])
+  page        WorkflowPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
