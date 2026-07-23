@@ -382,6 +382,18 @@ app.get("/workflows/:id", async (req, res) => {
                     orderBy: {
                         order: "asc",
                     }
+                },
+                pages: {
+                    orderBy: {
+                        order: "asc"
+                    },
+                    include: {
+                        fields: {
+                            orderBy: {
+                                order: "asc",
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -1318,26 +1330,34 @@ app.delete("/workflows/:workflowId/pages/:pageId", requireAuth, requireAdmin, as
                 }
             });
 
-            const updatedPages = await Promise.all(
-                remainingPages.map((page, index) =>
-                    tx.workflowPage.update({
-                        where: {
-                            id: page.id,
-                        },
-                        data: {
-                            order: index + 1,
-                        }
-                    })
-                )
-            )
+            const updatedOrder = [];
 
-            return { deletedPage, updatedPages };
+            for (const [index, page] of remainingPages.entries()) {
+                const newOrder = index + 1;
+
+                if (page.order === newOrder) {
+                    updatedOrder.push(page);
+                    continue;
+                }
+
+                const updatedPage = await tx.workflowPage.update({
+                    where: {
+                        id: page.id
+                    },
+                    data: {
+                        order: newOrder,
+                    }
+                })
+                updatedOrder.push(updatedPage);
+            }
+
+            return { deletedPage, updatedOrder };
         });
         return res.status(200).json({
             message: "Page deleted successfully",
             deletedPage: result.deletedPage,
-            updatedPage: result.updatedPages,
-        })
+            updatedPages: result.updatedOrder,
+        });
     }
     catch (error) {
         if (error instanceof Error) {
