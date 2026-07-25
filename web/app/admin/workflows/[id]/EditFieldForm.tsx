@@ -1,93 +1,114 @@
-"use client"
+"use client";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { errorMessageClass, fieldInputClass, panelTitleClass, primaryActionClass, secondaryActionClass } from "@/app/components/ui";
+import { errorMessageClass, fieldInputClass, fieldLabelClass, listRowTitleClass, primaryActionClass, secondaryActionClass } from "@/app/components/ui";
 
-type EditWorkflowProps = {
+type EditFieldFormProp = {
     workflowId: string;
-    currentName: string;
+    pageId: string;
+    fieldId: string;
+    currentLabel: string;
 };
-
-export default function EditWorkflow({ workflowId, currentName }: EditWorkflowProps) {
+export default function EditFieldForm({ workflowId, pageId, fieldId, currentLabel }: EditFieldFormProp) {
     const router = useRouter();
 
     const [isEditing, setIsEditing] = useState(false);
-    const [name, setName] = useState(currentName);
-    const [isSaving, setIsSaving] = useState(false);
+    const [label, setLabel] = useState(currentLabel);
     const [errorMessage, setErrorMessage] = useState("");
+    const [isSaving, setIsSaving] = useState(false);
 
     function handleStartEdit() {
         setErrorMessage("");
-        setName(currentName);
-        setIsEditing(true);
+        setLabel(currentLabel);
+        setIsEditing(true)
     }
+
     function handleCancelEdit() {
         setErrorMessage("");
-        setName(currentName);
+        setLabel(currentLabel);
         setIsEditing(false);
     }
+
     async function handleSave() {
-        if (!name.trim()) {
-            setErrorMessage("Workflow name is required");
+        if (!label.trim()) {
+            setErrorMessage("Field label is required");
             return;
-        };
+        }
+
         try {
             setErrorMessage("");
             setIsSaving(true);
 
             const token = localStorage.getItem("token");
+            if (!token) {
+                setErrorMessage("You must be logged in");
+                return;
+            }
 
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workflows/${workflowId}`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workflows/${workflowId}/pages/${pageId}/fields/${fieldId}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
+                    "Authorization": `Bearer ${token}`,
                 },
                 body: JSON.stringify({
-                    name,
+                    label: label.trim(),
                 })
-            })
+            });
+
             if (!response.ok) {
                 const errorData = await response.json();
-                setErrorMessage(errorData.message || "Failed to edit workflow");
+                setErrorMessage(errorData.message || "Failed to edit label");
                 return;
-            };
+            }
+
             setIsEditing(false);
             router.refresh();
         }
         catch (error) {
-            console.error("Failed to patch data", error);
+            console.error("Failed to edit field", error);
+            setErrorMessage("Failed to edit field");
         }
         finally {
             setIsSaving(false);
         }
+
     }
 
     if (!isEditing) {
         return (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <p className={panelTitleClass}>{currentName}</p>
+                <p className={listRowTitleClass}>{currentLabel}</p>
                 <button
                     type="button"
                     onClick={handleStartEdit}
                     className={secondaryActionClass}
                 >
-                    Edit
+                    Edit field
                 </button>
             </div>
         )
     }
     return (
-        <div className="flex gap-3">
+        <div className="space-y-4">
+            <label
+                htmlFor={`edit-field-label-${fieldId}`}
+                className={fieldLabelClass}
+            >
+                Field label
+            </label>
             <input
+                id={`edit-field-label-${fieldId}`}
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
                 className={fieldInputClass}
             />
 
-            {errorMessage && <p className={errorMessageClass}>{errorMessage}</p>}
+            {
+                errorMessage && <p className={errorMessageClass}>{errorMessage}</p>
+            }
 
             <button
                 type="button"
@@ -97,6 +118,7 @@ export default function EditWorkflow({ workflowId, currentName }: EditWorkflowPr
             >
                 {isSaving ? "Saving..." : "Save"}
             </button>
+
             <button
                 type="button"
                 onClick={handleCancelEdit}
@@ -105,6 +127,8 @@ export default function EditWorkflow({ workflowId, currentName }: EditWorkflowPr
             >
                 Cancel
             </button>
+
+
 
         </div>
     )

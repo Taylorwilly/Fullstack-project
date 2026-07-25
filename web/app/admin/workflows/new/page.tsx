@@ -23,7 +23,10 @@ export default function NewWorkflowPage() {
     const [errorMessage, setErrorMessage] = useState("");
 
     function handleAddStep() {
-        if (!stepTitle.trim()) return;
+        if (!stepTitle.trim()) {
+            setErrorMessage("At least one step is required");
+            return;
+        }
         //We create a new step and add it to the array steps
         const newStep: DraftStep = {
             title: stepTitle.trim(),
@@ -48,8 +51,9 @@ export default function NewWorkflowPage() {
         e.preventDefault();
 
         if (!name.trim()) {
+            setErrorMessage("Workflow name is required");
             return;
-        }
+        };
 
         try {
             setSubmitting(true);
@@ -109,6 +113,7 @@ export default function NewWorkflowPage() {
                             placeholder="Enter workflow name here"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
+                            required
                             className="mt-2 w-full rounded border px-3 py-2"
                         />
                     </div>
@@ -120,6 +125,7 @@ export default function NewWorkflowPage() {
                                 placeholder="Insert the step here"
                                 value={stepTitle}
                                 onChange={(e) => setStepTitle(e.target.value)}
+
                                 className="flex-1 rounded border px-3 py-2"
                             />
                             <button type="button"

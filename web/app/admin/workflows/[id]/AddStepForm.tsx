@@ -17,7 +17,7 @@ export default function AddStepForm({ workflowId }: AddStepFormProps) {
         e.preventDefault();
         //We check if there is a title and return if not
         if (!title.trim()) {
-            return;
+            throw new Error("Step title is required");
         }
         try {
             //Now we are in the submitting mode, 
@@ -77,8 +77,9 @@ export default function AddStepForm({ workflowId }: AddStepFormProps) {
             <button
                 type="submit"
                 disabled={submitting}
-                className="rounded bg-black px-4 py-2 text-white disabled:opacity-50">
-                {submitting ? "Adding..." : "Add Step"}
+                className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+            >
+                {submitting ? "Adding step..." : "Add Step"}
             </button>
 
         </form>

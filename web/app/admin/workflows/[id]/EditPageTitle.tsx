@@ -1,62 +1,74 @@
-"use client"
+"use client";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { errorMessageClass, fieldInputClass, panelTitleClass, primaryActionClass, secondaryActionClass } from "@/app/components/ui";
+import { errorMessageClass, fieldGroupClass, fieldInputClass, fieldLabelClass, panelTitleClass, primaryActionClass, secondaryActionClass } from "@/app/components/ui";
 
-type EditWorkflowProps = {
+type EditPageTitleProps = {
     workflowId: string;
-    currentName: string;
+    pageId: string;
+    currentTitle: string;
 };
 
-export default function EditWorkflow({ workflowId, currentName }: EditWorkflowProps) {
+export default function EditPageTitle({ workflowId, pageId, currentTitle }: EditPageTitleProps) {
     const router = useRouter();
 
     const [isEditing, setIsEditing] = useState(false);
-    const [name, setName] = useState(currentName);
-    const [isSaving, setIsSaving] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
+    const [title, setTitle] = useState(currentTitle);
+    const [isSaving, setIsSaving] = useState(false);
 
     function handleStartEdit() {
         setErrorMessage("");
-        setName(currentName);
+        setTitle(currentTitle);
         setIsEditing(true);
-    }
+    };
+
     function handleCancelEdit() {
         setErrorMessage("");
-        setName(currentName);
+        setTitle(currentTitle);
         setIsEditing(false);
-    }
+    };
+
     async function handleSave() {
-        if (!name.trim()) {
-            setErrorMessage("Workflow name is required");
+        if (!title.trim()) {
+            setErrorMessage("Page title is required");
             return;
-        };
+        }
         try {
             setErrorMessage("");
             setIsSaving(true);
 
             const token = localStorage.getItem("token");
 
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workflows/${workflowId}`, {
+            if (!token) {
+                setErrorMessage("You must be logged in");
+                return;
+            }
+
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workflows/${workflowId}/pages/${pageId}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
+                    "Authorization": `Bearer ${token}`,
                 },
                 body: JSON.stringify({
-                    name,
+                    title: title.trim(),
                 })
-            })
+            });
+
             if (!response.ok) {
                 const errorData = await response.json();
-                setErrorMessage(errorData.message || "Failed to edit workflow");
+                setErrorMessage(errorData.message || "Failed to edit page");
                 return;
-            };
+            }
+
             setIsEditing(false);
             router.refresh();
         }
         catch (error) {
-            console.error("Failed to patch data", error);
+            console.error("Failed to edit page", error);
+            setErrorMessage("Failed to edit page");
         }
         finally {
             setIsSaving(false);
@@ -66,26 +78,35 @@ export default function EditWorkflow({ workflowId, currentName }: EditWorkflowPr
     if (!isEditing) {
         return (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <p className={panelTitleClass}>{currentName}</p>
+                <p className={panelTitleClass}>{currentTitle}</p>
                 <button
                     type="button"
                     onClick={handleStartEdit}
                     className={secondaryActionClass}
                 >
-                    Edit
+                    Edit title
                 </button>
             </div>
         )
     }
+
     return (
-        <div className="flex gap-3">
-            <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className={fieldInputClass}
-            />
+        <div className="space-y-4">
+            <div className={fieldGroupClass}>
+                <label
+                    htmlFor={`page-label-${pageId}`}
+                    className={fieldLabelClass}
+                >
+                    Page title
+                </label>
+                <input
+                    id={`page-label-${pageId}`}
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className={fieldInputClass}
+                />
+            </div>
 
             {errorMessage && <p className={errorMessageClass}>{errorMessage}</p>}
 
@@ -95,8 +116,9 @@ export default function EditWorkflow({ workflowId, currentName }: EditWorkflowPr
                 disabled={isSaving}
                 className={primaryActionClass}
             >
-                {isSaving ? "Saving..." : "Save"}
+                {isSaving ? "Saving page..." : "Save title"}
             </button>
+
             <button
                 type="button"
                 onClick={handleCancelEdit}
@@ -105,7 +127,6 @@ export default function EditWorkflow({ workflowId, currentName }: EditWorkflowPr
             >
                 Cancel
             </button>
-
         </div>
     )
 }

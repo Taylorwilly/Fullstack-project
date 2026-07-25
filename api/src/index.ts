@@ -1315,6 +1315,7 @@ app.delete("/workflows/:workflowId/pages/:pageId", requireAuth, requireAdmin, as
                 throw new Error("THIS_PAGE_DOES_NOT_BELONG_TO_THIS_WORKFLOW");
             }
 
+
             const deletedPage = await tx.workflowPage.delete({
                 where: {
                     id: pageId,

@@ -3,16 +3,17 @@ import { useState } from "react";
 
 type DeleteWorkflowButton = {
     workflowId: string;
+    workflowName: string;
     onDeleted: () => void;
 };
 
-export default function DeleteWorkflowButton({ workflowId, onDeleted }: DeleteWorkflowButton) {
+export default function DeleteWorkflowButton({ workflowId, workflowName, onDeleted }: DeleteWorkflowButton) {
     const [deleting, setDeleting] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
 
     async function handleDelete() {
         //The user should be sure to delete or not
-        const confirmed = window.confirm("Do you want to delete this workflow?");
+        const confirmed = window.confirm(`Delete ${workflowName}? All the pages and fields inside this page will also be deleted.`);
         if (!confirmed) return;
 
         try {

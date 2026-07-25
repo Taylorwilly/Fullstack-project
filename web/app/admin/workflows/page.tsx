@@ -135,6 +135,7 @@ export default function WorkflowPage() {
 
                                                         <DeleteWorkflowButton
                                                             workflowId={workflow.id}
+                                                            workflowName={workflow.name}
                                                             onDeleted={() =>
                                                                 setWorkflows(previousWorkflows => previousWorkflows.filter(
                                                                     item => item.id !== workflow.id
