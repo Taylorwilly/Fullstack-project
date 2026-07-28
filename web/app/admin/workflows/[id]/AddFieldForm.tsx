@@ -2,7 +2,7 @@
 
 import { useState, SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
-import { errorMessageClass, fieldGroupClass, fieldInputClass, fieldLabelClass, panelTextClass, panelTitleClass, primaryActionClass } from "@/app/components/ui";
+import { errorMessageClass, fieldGroupClass, fieldInputClass, fieldLabelClass, fieldTextareaClass, panelTextClass, panelTitleClass, primaryActionClass } from "@/app/components/ui";
 
 type AddFieldFormProp = {
     workflowId: string;
@@ -13,8 +13,13 @@ export default function AddFieldForm({ pageId, workflowId }: AddFieldFormProp) {
     const router = useRouter();
 
     const [errorMessage, setErrorMessage] = useState("");
-    const [label, setLabel] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    const [label, setLabel] = useState("");
+    const [fieldType, setFieldType] = useState("TEXT");
+    const [required, setRequired] = useState(true);
+    const [placeholder, setPlaceholder] = useState("");
+    const [helpText, setHelpText] = useState("");
+
 
     async function handleSubmit(e: SubmitEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -42,6 +47,10 @@ export default function AddFieldForm({ pageId, workflowId }: AddFieldFormProp) {
                 },
                 body: JSON.stringify({
                     label: label.trim(),
+                    fieldType,
+                    required,
+                    placeholder,
+                    helpText,
                 })
             });
 
@@ -50,13 +59,12 @@ export default function AddFieldForm({ pageId, workflowId }: AddFieldFormProp) {
                 setErrorMessage(errorData.message || "Failed to create field");
                 return;
             }
-
-            const responseData = await response.json();
-
+            setFieldType("TEXT");
             setLabel("");
+            setRequired(true);
+            setPlaceholder("");
+            setHelpText("");
             router.refresh();
-
-            console.log(responseData);
 
         }
         catch (error) {
@@ -83,6 +91,7 @@ export default function AddFieldForm({ pageId, workflowId }: AddFieldFormProp) {
                 <label htmlFor={`field-label-${pageId}`} className={fieldLabelClass}>
                     Field label
                 </label>
+
                 <input
                     id={`field-label-${pageId}`}
                     type="text"
@@ -90,6 +99,88 @@ export default function AddFieldForm({ pageId, workflowId }: AddFieldFormProp) {
                     onChange={(e) => setLabel(e.target.value)}
                     className={fieldInputClass}
                     required
+                />
+            </div>
+
+            <div className={fieldGroupClass}>
+                <label htmlFor={`field-type-${pageId}`} className={fieldLabelClass}>
+                    Field type
+                </label>
+                <select
+                    id={`field-type-${pageId}`}
+                    value={fieldType}
+                    onChange={(e) => setFieldType(e.target.value)}
+                    className={fieldInputClass}
+                >
+                    <option value="TEXT">
+                        Text
+                    </option>
+                    <option value="TEXTAREA">
+                        Long Text
+                    </option>
+                    <option value="EMAIL">
+                        Email
+                    </option>
+                    <option value="NUMBER">
+                        Number
+                    </option>
+                    <option value="DATE">
+                        Date
+                    </option>
+                    <option value="PHONE">
+                        Phone
+                    </option>
+                    <option value="RADIO">
+                        Multiple choice
+                    </option>
+                    <option value="SELECT">
+                        Dropdown
+                    </option>
+                    <option value="CHECKBOX">
+                        Checkbox
+                    </option>
+                </select>
+            </div>
+
+            <div className={fieldGroupClass}>
+                <label
+                    htmlFor={`field-placeholder-${pageId}`}
+                    className={fieldLabelClass}
+                >
+                    Placeholder
+                </label>
+                <input
+                    id={`field-placeholder-${pageId}`}
+                    type="text"
+                    value={placeholder}
+                    onChange={(event) => setPlaceholder(event.target.value)}
+                    className={fieldInputClass}
+                />
+            </div>
+
+            <div className={fieldGroupClass}>
+                <label
+                    htmlFor={`field-helpText-${pageId}`}
+                    className={fieldLabelClass}
+                >
+                    Help text
+                </label>
+                <textarea
+                    id={`field-helpText-${pageId}`}
+                    value={helpText}
+                    onChange={(e) => setHelpText(e.target.value)}
+                    className={fieldTextareaClass}
+                />
+
+            </div>
+
+            <div className="flex items-center gap-2">
+                <label htmlFor={`field-required-${pageId}`} className={fieldLabelClass}>Required field</label>
+                <input
+                    id={`field-required-${pageId}`}
+                    type="checkbox"
+                    checked={required}
+                    onChange={(event) => setRequired(event.target.checked)}
                 />
             </div>
 

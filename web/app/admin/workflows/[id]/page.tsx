@@ -23,11 +23,21 @@ type WorkflowStep = {
     title: string;
     order: number;
 }
+
+type FieldType =
+    "TEXT" | "TEXTAREA" | "NUMBER" |
+    "DATE" | "EMAIL" | "PHONE" |
+    "RADIO" | "SELECT" | "CHECKBOX";
+
 type WorkflowField = {
     id: string;
     pageId: string;
     label: string;
     order: number;
+    fieldType: FieldType;
+    required: boolean;
+    placeholder: string | null;
+    helpText: string | null;
 }
 type WorkflowPage = {
     id: string;
@@ -171,7 +181,7 @@ export default async function WorkFlowDefaultPage({ params }: Props) {
                                                         </h3>
 
                                                         <p className={sectionTextClass}>
-                                                            Fields appear in this order when then client completes the page.
+                                                            Fields appear in this order when the client completes the page.
                                                         </p>
                                                     </div>
                                                     {
@@ -188,16 +198,26 @@ export default async function WorkFlowDefaultPage({ params }: Props) {
                                                                         return (
                                                                             <div key={field.id} className={listRowClass}>
                                                                                 <div className="min-w-0">
-                                                                                    <p className={listRowMetaClass}>
-                                                                                        Field {field.order}
-                                                                                    </p>
-
                                                                                     <EditFieldForm
                                                                                         workflowId={workflow.id}
                                                                                         pageId={page.id}
                                                                                         fieldId={field.id}
                                                                                         currentLabel={field.label}
+                                                                                        currentPlaceholder={field.placeholder}
+                                                                                        currentHelpText={field.helpText}
+                                                                                        currentFieldType={field.fieldType}
+                                                                                        currentRequired={field.required}
                                                                                     />
+                                                                                    <p className={listRowMetaClass}>
+                                                                                        Field {field.order}
+                                                                                    </p>
+                                                                                    <p className={listRowMetaClass}>
+                                                                                        Type: {field.fieldType}
+                                                                                        <span> {field.required ? "Required" : "Optional"}</span>
+                                                                                    </p>
+                                                                                    {field.placeholder && <p className={listRowMetaClass}>Placeholder: {field.placeholder}</p>}
+                                                                                    {field.helpText && <p className={listRowMetaClass}>Help text: {field.helpText}</p>}
+
                                                                                 </div>
                                                                                 <div className={listRowActionClass}>
                                                                                     <DeleteFieldButton

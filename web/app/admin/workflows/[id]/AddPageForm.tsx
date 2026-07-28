@@ -22,14 +22,12 @@ export default function AddPageForm({ workflowId }: AddPageFormProp) {
             setSubmitting(true);
             setErrorMessage("");
 
-
             const token = localStorage.getItem("token");
 
             if (!token) {
                 setErrorMessage("You must be logged in.");
                 return;
             }
-
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workflows/${workflowId}/pages`, {
                 method: "POST",
                 headers: {
@@ -46,16 +44,8 @@ export default function AddPageForm({ workflowId }: AddPageFormProp) {
                 setErrorMessage(errorData.message || "Failed to create page");
                 return;
             }
-
-            const responseData = await response.json();
             setTitle("");
             router.refresh();
-
-
-            console.log("Title", title);
-            console.log("WorkflowId", workflowId);
-            console.log(responseData);
-
         }
         catch (error) {
             console.error("Submission failed", error);
@@ -65,7 +55,6 @@ export default function AddPageForm({ workflowId }: AddPageFormProp) {
             setSubmitting(false);
         }
     }
-
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>

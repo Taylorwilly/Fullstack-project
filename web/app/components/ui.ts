@@ -18,7 +18,6 @@ export const pageHeadingClass = "text-3xl font-semibold tracking-tight text-[#24
 
 export const pageIntroClass = "max-w-2xl text-[15px] leading-6 text-[#66736d]";
 
-
 export const sectionClass = "mt-8";
 
 export const sectionHeaderClass = "mb-4 flex flex-col gap-1";

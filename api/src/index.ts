@@ -7,6 +7,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import * as z from "zod";
 import argon2 from "argon2";
 import * as jwt from "jsonwebtoken";
+import { FieldType } from "@prisma/client";
 
 
 dotenv.config();
@@ -475,7 +476,7 @@ app.delete("/workflows/:id", requireAuth, requireAdmin, async (req, res) => {
     }
 });
 
-//We create a route for new steps.
+//We create a route for steps.
 app.post("/workflows/:id/steps", requireAuth, requireAdmin, async (req, res) => {
     const { id } = req.params;
     const { title } = req.body;
@@ -1384,7 +1385,8 @@ app.post("/workflows/:workflowId/pages/:pageId/fields", requireAuth, requireAdmi
     //Get workflow ID and page ID from the URL
     const { workflowId, pageId } = req.params;
     //Get field label from request
-    const { label } = req.body;
+    const { label, fieldType, required = true, placeholder, helpText } = req.body;
+
 
     if (typeof workflowId !== "string" || typeof pageId !== "string") {
         return res.status(400).json({
@@ -1397,6 +1399,38 @@ app.post("/workflows/:workflowId/pages/:pageId/fields", requireAuth, requireAdmi
             message: "The label is required"
         })
     }
+
+    if (typeof fieldType !== "string" || !Object.values(FieldType).includes(fieldType as FieldType)) {
+        return res.status(400).json({
+            message: "The field type is required and must be of the following types: " + Object.values(FieldType).join(", "),
+        });
+    }
+
+    if (typeof required !== "boolean") {
+        return res.status(400).json({
+            message: "required must be true or false"
+        });
+    }
+    if (placeholder !== undefined && typeof placeholder !== "string") {
+        return res.status(400).json({
+            message: "The placeholder must be a string."
+        });
+    }
+
+    const normalizedPlaceholder =
+        placeholder === undefined || !placeholder.trim()
+            ? null
+            : placeholder.trim();
+
+    if (helpText !== undefined && typeof helpText !== "string") {
+        return res.status(400).json({
+            message: "The help text must be a string"
+        });
+    }
+    const normalizedHelpText =
+        helpText === undefined || !helpText.trim()
+            ? null
+            : helpText.trim();
 
     try {
         //Start a transaction because to create a field needs checking 
@@ -1441,6 +1475,10 @@ app.post("/workflows/:workflowId/pages/:pageId/fields", requireAuth, requireAdmi
                 data: {
                     pageId,
                     label: label.trim(),
+                    fieldType: fieldType as FieldType,
+                    required,
+                    placeholder: normalizedPlaceholder,
+                    helpText: normalizedHelpText,
                     order: lastField ? lastField.order + 1 : 1,
                 }
             });
@@ -1483,7 +1521,7 @@ app.post("/workflows/:workflowId/pages/:pageId/fields", requireAuth, requireAdmi
 app.patch("/workflows/:workflowId/pages/:pageId/fields/:fieldId", requireAuth, requireAdmin, async (req, res) => {
 
     const { workflowId, pageId, fieldId } = req.params;
-    const { label } = req.body;
+    const { label, placeholder, helpText, fieldType, required } = req.body;
 
     if (typeof workflowId !== "string"
         || typeof pageId !== "string"
@@ -1493,10 +1531,53 @@ app.patch("/workflows/:workflowId/pages/:pageId/fields/:fieldId", requireAuth, r
         })
     };
 
-    if (typeof label !== "string" || !label.trim()) {
+    if (label !== undefined && (typeof label !== "string" || !label.trim())) {
         return res.status(400).json({
-            message: "Label is required",
+            message: "Label must be a non-blank string",
         })
+    }
+
+    if (helpText !== undefined && typeof helpText !== "string") {
+        return res.status(400).json({
+            message: "Help text must be string",
+        });
+    }
+    const normalizedHelpText =
+        helpText === undefined || !helpText.trim() ? null : helpText.trim();
+
+    if (placeholder !== undefined && typeof placeholder !== "string") {
+        return res.status(400).json({
+            message: "Placeholder must be a string",
+        });
+    }
+
+    const normalizedPlaceholder =
+        placeholder === undefined || !placeholder.trim() ? null : placeholder.trim();
+
+
+    if (fieldType !== undefined && (typeof fieldType !== "string" || !Object.values(FieldType).includes(fieldType as FieldType))) {
+        return res.status(400).json({
+            message: "FieldType must be one of the following: " + Object.values(FieldType).join("; "),
+        });
+    }
+
+    if (required !== undefined && typeof required !== "boolean") {
+        return res.status(400).json({
+            message: "Required must be a boolean",
+        });
+    }
+
+    const hasEditableValue =
+        label !== undefined
+        || helpText !== undefined
+        || placeholder !== undefined
+        || fieldType !== undefined
+        || required !== undefined;
+
+    if (!hasEditableValue) {
+        return res.status(400).json({
+            message: "At least one editable field must be provided",
+        });
     }
 
     try {
@@ -1546,12 +1627,19 @@ app.patch("/workflows/:workflowId/pages/:pageId/fields/:fieldId", requireAuth, r
             })
         }
 
+
+
         const updatedField = await prisma.workflowField.update({
             where: {
                 id: fieldId,
             },
             data: {
-                label: label.trim(),
+                ...(label !== undefined ? { label: label.trim() } : {}),
+                ...(required !== undefined ? { required } : {}),
+                ...(fieldType !== undefined ? { fieldType: fieldType as FieldType } : {}),
+                ...(placeholder !== undefined ? { placeholder: normalizedPlaceholder } : {}),
+                ...(helpText !== undefined ? { helpText: normalizedHelpText } : {}),
+
             }
         });
 
