@@ -5,32 +5,53 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { appPageClass, emptyStateClass, errorMessageClass, fieldGroupClass, fieldInputClass, fieldLabelClass, formActionClass, loadingMessageClass, narrowContentWrapperClass, pageHeaderClass, pageHeadingClass, pageIntroClass, pageLabelClass, panelClass, panelTextClass, panelTitleClass, primaryActionClass, secondaryActionClass } from "@/app/components/ui";
 
-type Step = {
+type FieldType = "TEXT" | "TEXTAREA" | "NUMBER"
+    | "DATE" | "EMAIL" | "RADIO"
+    | "PHONE" | "SELECT" | "CHECKBOX";
+
+type WorkflowField = {
+    id: string;
+    pageId: string;
+    label: string;
+    fieldType: FieldType;
+    required: boolean;
+    placeholder: string | null;
+    helpText: string | null;
+    order: number;
+    options: unknown | null;
+}
+
+type WorkflowPage = {
     id: string;
     workflowId: string;
     title: string;
     order: number;
-};
+    fields: WorkflowField[];
+}
 
 type Workflow = {
     id: string;
     name: string;
-    steps: Step[];
+    pages: WorkflowPage[];
 };
 
 export default function SubmissionDefaultPage() {
     const router = useRouter();
     const params = useParams();
+
     const workflowId = Array.isArray(params.workflowId)
         ? params.workflowId[0]
         : params.workflowId;
 
     const [workflow, setWorkflow] = useState<Workflow | null>(null);
-    const [currentStepIndex, setCurrentStepIndex] = useState(0);
-    const [loading, setLoading] = useState(true);
+
+    const [currentPageIndex, setCurrentPageIndex] = useState(0);
+
     const [answers, setAnswers] = useState<Record<string, string>>({});
+
+    const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
-    const [submissionError, setSubmissionError] = useState("");
+    const [errorMessage, setErrorMessage] = useState("");
 
     async function loadWorkflow() {
         try {
@@ -43,11 +64,18 @@ export default function SubmissionDefaultPage() {
             }
 
             const data: Workflow = await response.json();
-            const sortedSteps = [...data.steps].sort((a, b) => a.order - b.order);
+
+            const sortedPages = [...data.pages]
+                .sort((a, b) => a.order - b.order)
+                .map((page) => ({
+                    ...page,
+                    fields: [...page.fields]
+                        .sort((a, b) => a.order - b.order),
+                }));
 
             setWorkflow({
                 ...data,
-                steps: sortedSteps
+                pages: sortedPages
             });
 
         }
@@ -55,10 +83,10 @@ export default function SubmissionDefaultPage() {
             console.error("Fail to load workflow", error);
 
             if (error instanceof Error) {
-                setSubmissionError(error.message);
+                setErrorMessage(error.message);
             }
             else {
-                setSubmissionError("Fail to load workflow");
+                setErrorMessage("Fail to load workflow");
             }
         }
         finally {
@@ -69,7 +97,7 @@ export default function SubmissionDefaultPage() {
     async function handleSubmission() {
         try {
             //Remove an old error if the client tries again
-            setSubmissionError("");
+            setErrorMessage("");
             setSubmitting(true);
 
             const token = localStorage.getItem("token");
@@ -81,21 +109,17 @@ export default function SubmissionDefaultPage() {
 
             if (!workflow) return;
 
-            if (Object.keys(answers).length === 0) {
-                setSubmissionError("Please answer every workflow step before submitting");
-                return;
-            };
+            const requiredWorkflowFields = workflow.pages.flatMap(page => page.fields).filter(field => field.required);
 
-            const allStepAnswered = workflow.steps.every((step) => {
-                const value = answers[step.id];
+            const allRequiredFieldAnswered = requiredWorkflowFields.every((field) => {
+                const value = answers[field.id];
                 return value && value.trim() !== "";
             })
-            if (!allStepAnswered) {
-                setSubmissionError("Please answer every workflow step before submitting");
+
+            if (!allRequiredFieldAnswered) {
+                setErrorMessage("Please complete every required field before submitting");
                 return;
-            };
-
-
+            }
 
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/submissions`, {
                 method: "POST",
@@ -122,10 +146,10 @@ export default function SubmissionDefaultPage() {
             console.error("Failed to submit answers", error);
 
             if (error instanceof Error) {
-                setSubmissionError(error.message);
+                setErrorMessage(error.message);
             }
             else {
-                setSubmissionError("Something went wrong while submitting your answers");
+                setErrorMessage("Something went wrong while submitting your answers");
             }
         }
         finally {
@@ -167,12 +191,12 @@ export default function SubmissionDefaultPage() {
         );
     }
 
-    if (workflow.steps.length === 0) {
+    if (workflow.pages.length === 0) {
         return (
             <main className={appPageClass}>
                 <section className={narrowContentWrapperClass}>
                     <div className={emptyStateClass}>
-                        This workflow does not have steps yet
+                        This workflow does not have pages yet
                     </div>
                     <div className="mt-4">
                         <Link href="/portal/start" className={secondaryActionClass}>
@@ -183,20 +207,24 @@ export default function SubmissionDefaultPage() {
             </main>
         );
     };
+    const currentPage = workflow.pages[currentPageIndex];
 
-    const currentStep = workflow.steps[currentStepIndex];
-    const isFirstStep = currentStepIndex === 0;
-    const isLastStep = currentStepIndex === workflow.steps.length - 1;
-    const progressPercentage = Math.round(((currentStepIndex + 1) / workflow.steps.length) * 100);
+    const isFirstPage = currentPageIndex === 0;
+    const isLastPage = currentPageIndex === workflow.pages.length - 1;
 
-    function handlePrevious() {
-        if (isFirstStep) return;
-        setCurrentStepIndex((prev) => prev - 1);
-    };
-    function handleNext() {
-        if (isLastStep) return;
-        setCurrentStepIndex((prev) => prev + 1);
-    };
+    const pageProgress = Math.round(((currentPageIndex + 1) / workflow.pages.length) * 100);
+
+    function handlePreviousPage() {
+        if (isFirstPage) return;
+
+        setCurrentPageIndex((prev) => prev - 1);
+    }
+
+    function handleNextPage() {
+        if (isLastPage) return;
+
+        setCurrentPageIndex((prev) => prev + 1);
+    }
 
     return (
         <main className={appPageClass}>
@@ -219,77 +247,84 @@ export default function SubmissionDefaultPage() {
                         Complete each step before submitting your application for review.
                     </p>
                 </header>
-
                 <div className={panelClass}>
                     <div className="mb-6">
                         <div className="flex items-center justify-between gap-4 text-sm text-[#66736d]">
                             <span>
-                                Step {currentStepIndex + 1} of {workflow.steps.length}
+                                Page {currentPageIndex + 1} of {workflow.pages.length}
                             </span>
 
                             <span>
-                                {progressPercentage} % complete
+                                {pageProgress} % complete
                             </span>
                         </div>
 
                         <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#e4eee8]">
                             <div
                                 className="h-full rounded-full bg-[#1c5a4b]"
-                                style={{ width: `${progressPercentage}%` }}
+                                style={{ width: `${pageProgress}%` }}
                             />
                         </div>
                     </div>
                     <div className="mb-6">
                         <p className={pageLabelClass}>
-                            Current Step
+                            Current Page
                         </p>
                         <h2 className={`${panelTitleClass}`}>
-                            {currentStep.title}
+                            {currentPage.title}
                         </h2>
                         <p className={`${panelTextClass} mt-2 text-lg`}>
-                            Enter your answer below. You can go back to review previous steps before submitting.
+                            Enter your answers below. You can go back to review previous fields before submitting.
                         </p>
                     </div>
 
-                    <div className={fieldGroupClass}>
-                        <label htmlFor={currentStep.id} className={fieldLabelClass}>
-                            Your answer
-                        </label>
-                        <input
-                            id={currentStep.id}
-                            type="text"
-                            value={answers[currentStep.id] || ""}
-                            onChange={(e) =>
-                                setAnswers((prev) => ({
-                                    ...prev,
-                                    [currentStep.id]: e.target.value,
-                                }))
-                            }
-                            placeholder="Enter your name here"
-                            className={fieldInputClass}
-                        />
-                    </div>
-                    {submissionError && (
+                    {
+                        currentPage.fields.map((field) =>
+                            <div key={field.id} className={fieldGroupClass}>
+                                <div>
+                                    <label htmlFor={field.id} className={fieldLabelClass}>
+                                        {field.label}
+                                    </label>
+                                    <input
+                                        id={field.id}
+                                        type="text"
+                                        value={answers[field.id] || ""}
+                                        onChange={(e) =>
+                                            setAnswers((prev) => ({
+                                                ...prev,
+                                                [field.id]: e.target.value,
+                                            }))
+                                        }
+                                        placeholder={field.placeholder || ""}
+                                        className={fieldInputClass}
+                                    />
+
+                                    {field.helpText && <p>{field.helpText}</p>}
+                                </div>
+                            </div>
+                        )
+                    }
+                    {errorMessage && (
                         <p role="alert" className={errorMessageClass} >
-                            {submissionError}
+                            {errorMessage}
                         </p>
                     )}
 
                     <div className={formActionClass}>
                         <button
                             type="button"
-                            onClick={handlePrevious}
-                            disabled={isFirstStep}
+                            onClick={handlePreviousPage}
+                            disabled={isFirstPage}
                             className={secondaryActionClass}
                         >
                             Previous
                         </button>
 
-                        {!isLastStep ? (
+                        {!isLastPage ? (
                             <button
                                 type="button"
-                                onClick={handleNext}
-                                disabled={isLastStep}
+                                onClick={handleNextPage}
+                                disabled={isLastPage}
                                 className={secondaryActionClass}
                             >
                                 Next
@@ -301,7 +336,7 @@ export default function SubmissionDefaultPage() {
                                 disabled={submitting}
                                 className={primaryActionClass}
                             >
-                                {submitting ? "Submitting..." : "Submit appllication"}
+                                {submitting ? "Submitting..." : "Submit application"}
                             </button>
                         )}
                     </div>

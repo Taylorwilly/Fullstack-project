@@ -19,13 +19,15 @@ export default function Home() {
                 <div className="grid gap-8 py-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
                     <div className={panelClass}>
                         <p className={pageLabelClass}>
-                            Full-Stack Portfolio Project
+                            CLIENT INTAKE WORKFLOW PLATFORM
                         </p>
                         <h1 className={`${pageHeadingClass} mt-4 max-w-3xl text-4xl sm:text-5xl`}>
                             IntakeFlow helps teams collect, review, and manage client intake submissions
                         </h1>
                         <p className={`${pageIntroClass} mt-5 text-base`}>
-                            This is a deployed workflow application platform where administrators manage workflows and review submissions, while clients complete structured forms.
+                            A deployed intake platform where administrators build structured
+                            forms, review client submissions, and manage application outcomes.
+
                         </p>
                         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                             <Link href="/login" className={primaryActionClass}>
@@ -49,7 +51,8 @@ export default function Home() {
                                     1. Admin builds workflows
                                 </h2>
                                 <p className={`${panelTextClass} mt-2`}>
-                                    Admins create reusable workflows and define the steps clients need to complete.
+                                    Admins create reusable workflows
+                                    and define the fields clients need to complete.
                                 </p>
                             </div>
 
@@ -58,7 +61,8 @@ export default function Home() {
                                     2. Clients submit forms
                                 </h2>
                                 <p className={`${panelTextClass} mt-2`}>
-                                    Clients register, sign in, complete workflows, and track their submission status.
+                                    Clients register, sign in, complete workflows,
+                                    and track their submission status.
                                 </p>
                             </div>
 
@@ -67,7 +71,8 @@ export default function Home() {
                                     3. Admin reviews submissions
                                 </h2>
                                 <p className={`${panelTextClass} mt-2`}>
-                                    Admins review submitted answers and update each application as In Review, Approved, or Rejected.
+                                    Admins review submitted answers and update each application as In
+                                    Review, Approved, or Rejected.
                                 </p>
                             </div>
                         </div>
@@ -80,7 +85,8 @@ export default function Home() {
                             Client Portal
                         </h2>
                         <p className={`${panelTextClass} mt-2`}>
-                            Clients can create accounts, submit intake workflows, and view their application status.
+                            Clients can create accounts, submit intake workflows,
+                            and view their application status.
                         </p>
                     </div>
 
@@ -89,7 +95,8 @@ export default function Home() {
                             Admin Workspace
                         </h2>
                         <p className={`${panelTextClass} mt-2`}>
-                            Admins can manage workflows, review all submissions, and update review outcomes
+                            Admins can manage workflows, review all submissions,
+                            and update review outcomes
                         </p>
                     </div>
 
@@ -98,7 +105,8 @@ export default function Home() {
                             Stack and Deployment
                         </h2>
                         <p className={`${panelTextClass} mt-2`}>
-                            Built with Next.js, TypeScript, Express, Prisma, PostgreSQL, JWT auth, Vercel, Render, and Neon.
+                            Built with Next.js, TypeScript, Express, Prisma,
+                            PostgreSQL, JWT auth, Vercel, Render, and Neon.
                         </p>
                     </div>
 
@@ -110,9 +118,9 @@ export default function Home() {
                     </h2>
                     <ul className="mt-3 space-y-2 text-sm leading-6 text-[#66736d]">
                         <li> JWT authentication and role-based authorization</li>
-                        <li> Client-only access to personnal submissions</li>
+                        <li> Client-only access to personal submissions</li>
                         <li> Admin access to all submissions</li>
-                        <li> Workflow and workflow-step management</li>
+                        <li> Workflow and page field management</li>
                         <li> PostgreSQL database with Prisma ORM</li>
                         <li> Production frontend, API and database deployment</li>
                     </ul>

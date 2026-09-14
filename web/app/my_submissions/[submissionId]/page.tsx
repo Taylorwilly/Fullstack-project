@@ -35,23 +35,30 @@ type Submission = {
     activities?: SubmissionActivity[];
     createdAt: string;
 }
+type WorkflowField = {
+    id: string;
+    label: string;
+    order: number;
+};
+
+type WorkflowPage = {
+    id: string;
+    title: string;
+    order: number;
+    fields: WorkflowField[];
+}
 
 type SubmissionAnswer = {
     id: string,
-    stepId: string,
+    submissionId: string,
+    fieldId: string,
     value: string,
 }
 
-type WorkflowStep = {
-    id: string;
-    workflowId: string;
-    title: string;
-    order: number;
-}
 type Workflow = {
     id: string;
     name: string;
-    steps: WorkflowStep[];
+    pages: WorkflowPage[];
 }
 
 export default function SubmissionPage({ params }: Props) {
@@ -62,7 +69,6 @@ export default function SubmissionPage({ params }: Props) {
     const [loading, setLoading] = useState(true);
     const [workflow, setWorkflow] = useState<Workflow | null>(null);
     const [errorMessage, setErrorMessage] = useState("");
-    const [sortedSteps, setSortedSteps] = useState<WorkflowStep[]>([]);
 
     async function loadSubmission() {
         try {
@@ -90,18 +96,23 @@ export default function SubmissionPage({ params }: Props) {
 
             const workflowRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workflows/${submissionData.workflowId}`, {
                 cache: "no-store",
-            })
+            });
             if (!workflowRes.ok) {
                 const errorData = await workflowRes.json();
                 throw new Error(errorData.message || "Failed to load workflows");
             }
             const workflowData = await workflowRes.json();
 
-            const orderedSteps = [...workflowData.steps].sort((a, b) => a.order - b.order);
+            const orderedPages = [...workflowData.pages]
+                .sort((a, b) => a.order - b.order)
+                .map((page) => ({
+                    ...page,
+                    fields: [...page.fields].sort((a, b) => a.order - b.order)
+                }));
 
-            setSortedSteps(orderedSteps);
+            const orderedWorkflow = { ...workflowData, pages: orderedPages };
             setSubmission(submissionData);
-            setWorkflow(workflowData);
+            setWorkflow(orderedWorkflow);
         }
         catch (error) {
             console.error("Loading submissions failed", error);
@@ -223,27 +234,31 @@ export default function SubmissionPage({ params }: Props) {
                             Submitted answers
                         </h2>
                         <p className={panelTextClass}>
-                            Answers you provided for each workflow step
+                            Answers you provided for each section of the form.
                         </p>
 
                         <ul className={listPanelClass}>
                             {
-                                sortedSteps.map((step) => {
-                                    const answer = submission.answers.find(answer => answer.stepId === step.id)
-                                    return (
-                                        <li key={step.id} className={listRowClass}>
-                                            <div className={listRowContentClass}>
-                                                <h3 className={listRowTitleClass}>
-                                                    {step?.title ?? "Unknown step"}
-                                                </h3>
-                                                <p className={listRowMetaClass}>
-                                                    {answer?.value ?? "No answer provided"}
-                                                </p>
-                                            </div>
-                                        </li>
-                                    );
-                                })
-                            }
+                                workflow.pages.map(page => (
+
+                                    <li key={page.id} className={listRowClass}>
+                                        <div className={listRowContentClass}>
+                                            <h3 className={panelTitleClass}> {page.title}</h3>
+                                            <ul className="mt-4 space-y-4">
+                                                {
+                                                    page.fields.map((field) => {
+                                                        const answer = submission.answers.find(answer => field.id === answer.fieldId);
+                                                        return (
+                                                            <li key={field.id} className="rounded-lg border border-[#d8ded7] bg-[#f6f2ea] px-4 py-3">
+                                                                <p className={listRowTitleClass}>{field.label} </p>
+                                                                <p className={listRowMetaClass}>{answer?.value ?? "No answer provided"}</p>
+                                                            </li>
+                                                        );
+                                                    })}
+                                            </ul>
+                                        </div>
+                                    </li>
+                                ))}
                         </ul>
                     </div>
                 </section>

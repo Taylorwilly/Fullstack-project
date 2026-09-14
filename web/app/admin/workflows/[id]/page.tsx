@@ -1,17 +1,18 @@
 { /*The Dynamic Page */ }
 
 import { appPageClass, emptyStateClass, listPanelClass, listRowActionClass, listRowClass, listRowMetaClass, narrowContentWrapperClass, pageLabelClass, panelClass, sectionClass, sectionHeaderClass, sectionTextClass } from "@/app/components/ui";
-import AddStepForm from "./AddStepForm";
-import DeleteStepButton from "./DeleteStepButton";
-import EditStepButton from "./EditStepButton";
 import EditWorkflow from "./EditWorkFlowName";
-import MoveStepButton from "./MoveStepButtons";
+import EditPageTitle from "./EditPageTitle";
+import EditFieldForm from "./EditFieldForm";
+
 import AddPageForm from "./AddPageForm";
 import AddFieldForm from "./AddFieldForm";
-import EditPageTitle from "./EditPageTitle";
+
 import DeletePageButton from "./DeletePageButton";
 import DeleteFieldButton from "./DeleteFieldButton";
-import EditFieldForm from "./EditFieldForm";
+
+import MovePageButton from "./MovePageButtons";
+
 
 type Props = {
     params: Promise<{ id: string }>;
@@ -73,7 +74,7 @@ export default async function WorkFlowDefaultPage({ params }: Props) {
         <section className={appPageClass}>
             <div className={narrowContentWrapperClass}>
                 <h1 className="text-3xl font-bold">Workflow Detail</h1>
-                <p className="mt-2 font-bold text-gray-600">This page shows the workflow and its steps.</p>
+                <p className="mt-2 font-bold text-gray-600">List of pages and fields</p>
                 <div className="mt-6 rounded border p-4">
                     <p className="text-sm text-gray-500">Workflow ID</p>
                     <p className="mt-1 font-medium">{workflow.id}</p>
@@ -82,48 +83,6 @@ export default async function WorkFlowDefaultPage({ params }: Props) {
                     <p className="text-sm text-gray-500">Workflow Name</p>
                     <EditWorkflow workflowId={workflow.id} currentName={workflow.name} />
                 </div>
-
-                <div className="mt-6">
-                    <h2 className="text-xl font-semibold">Steps</h2>
-                    {workflow.steps.length === 0 ? (
-                        <p className="mt-3 text-gray-600">No steps yet</p>
-                    ) : (
-                        <ul className="mt-4 space-y-3">
-
-                            {workflow.steps.map((step, index) => (
-                                <li key={step.id} className="rounded border p-4">
-                                    <div className="text-sm text-gray-500">
-                                        Step {step.order}
-                                    </div>
-                                    <div className="font-medium text-sm">{step.title}</div>
-
-                                    <div className="flex gap-3">
-                                        <MoveStepButton
-                                            workflowId={workflow.id}
-                                            stepId={step.id}
-                                            isFirst={index === 0}
-                                            isLast={index === workflow.steps.length - 1}
-                                        />
-                                        <EditStepButton
-                                            workflowId={step.workflowId}
-                                            stepId={step.id}
-                                            currentTitle={step.title}
-                                        />
-                                        <DeleteStepButton
-                                            workflowId={workflow.id}
-                                            stepId={step.id}
-                                        />
-
-                                    </div>
-                                </li>
-                            ))}
-
-                        </ul>
-                    )
-                    }
-                </div>
-
-                <AddStepForm workflowId={workflow.id} />
 
                 <section className={sectionClass}>
                     <div className={sectionHeaderClass}>
@@ -149,7 +108,7 @@ export default async function WorkFlowDefaultPage({ params }: Props) {
                         ) : (
                             <div className="space-y-5">
                                 {
-                                    workflow.pages.map((page) => {
+                                    workflow.pages.map((page, index) => {
                                         return (
                                             <article key={page.id} className={panelClass}>
                                                 <div className="flex flex-col gap-4 border-b border-[#d8ded7] pb-4 sm:flex-row sm:items-start sm:justify-between">
@@ -159,6 +118,12 @@ export default async function WorkFlowDefaultPage({ params }: Props) {
                                                         </p>
 
                                                         <div className="mt-2">
+                                                            <MovePageButton
+                                                                workflowId={workflow.id}
+                                                                pageId={page.id}
+                                                                isFirst={index === 0}
+                                                                isLast={index === workflow.pages.length - 1}
+                                                            />
                                                             <EditPageTitle
                                                                 workflowId={workflow.id}
                                                                 pageId={page.id}

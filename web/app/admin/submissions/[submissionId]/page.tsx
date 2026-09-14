@@ -33,20 +33,29 @@ type Submission = {
     activities: SubmissionActivity[];
 };
 type SubmissionAnswer = {
-    id: string,
-    stepId: string,
-    value: string,
-};
-type WorkflowStep = {
     id: string;
+    fieldId: string;
+    value: string;
+};
+
+type WorkflowField = {
+    id: string;
+    pageId: string;
+    label: string;
+    order: number;
+}
+
+type WorkflowPage = {
+    id: string,
     workflowId: string;
     title: string;
     order: number;
-};
+    fields: WorkflowField[];
+}
 type Workflow = {
     id: string;
     name: string;
-    steps: WorkflowStep[];
+    pages: WorkflowPage[]
 };
 
 export default function SubmissionPage({ params }: Props) {
@@ -58,7 +67,7 @@ export default function SubmissionPage({ params }: Props) {
     const [errorMessage, setErrorMessage] = useState("");
     const [submission, setSubmission] = useState<Submission | null>(null);
     const [workflow, setWorkflow] = useState<Workflow | null>(null);
-    const [sortedSteps, setSortedSteps] = useState<WorkflowStep[]>([]);
+    const [orderedPages, setOrderedPages] = useState<WorkflowPage[]>([]);
 
 
     async function loadSubmission() {
@@ -96,13 +105,17 @@ export default function SubmissionPage({ params }: Props) {
                 throw new Error(errorData.message || "Failed to load workflow");
             }
 
-            const workflowData = await workflowRes.json();
+            const workflowData: Workflow = await workflowRes.json();
 
-            const orderedSteps = [...workflowData.steps].sort((a, b) => a.order - b.order);
+            const pagesInOrder = [...workflowData.pages]
+                .sort((a, b) => a.order - b.order).map(page => ({
+                    ...page,
+                    fields: [...page.fields].sort((a, b) => a.order - b.order),
+                }));
 
             setSubmission(submissionData);
             setWorkflow(workflowData);
-            setSortedSteps(orderedSteps);
+            setOrderedPages(pagesInOrder);
         }
         catch (error) {
             console.error("Loading submission failed", error);
@@ -250,33 +263,46 @@ export default function SubmissionPage({ params }: Props) {
                             Submitted answers
                         </h2>
                         <p className={`${panelTextClass} mt-1`}>
-                            These are the answers provided by the client for each workflow step.
+                            These are the answers provided by the client, grouped by workflow page.
                         </p>
                     </div>
-                    <ul className={listPanelClass}>
+                    <div className={listPanelClass}>
                         {
-                            sortedSteps.map((step) => {
-                                const answer = submission.answers.find((answer) =>
-                                    answer.stepId === step.id
-                                );
-
-
+                            orderedPages.map((page) => {
                                 return (
-                                    <li key={step.id} className={listRowClass}>
-                                        <div className={listRowContentClass}>
-                                            <h3 className={listRowTitleClass}>
-                                                {step.title}
-                                            </h3>
-                                            <p className={listRowMetaClass}>
-                                                {answer?.value ?? "No answer provided"}
-                                            </p>
+                                    <section key={page.id} className="border-b border-[#d8ded7] last:border-b-0">
+
+                                        <h3 className="px-5 pt-5 text-base font-semibold text-[#24332e]">{page.title}</h3>
+
+                                        <div className="mt-3">
+                                            {page.fields.map((field) => {
+                                                const answer = submission.answers.find((answer) =>
+                                                    answer.fieldId === field.id
+
+                                                );
+                                                return (
+
+                                                    <div key={field.id} className={listRowClass}>
+                                                        <div className={listRowContentClass}>
+                                                            <h3 className={listRowTitleClass}>
+                                                                {field.label}
+                                                            </h3>
+                                                            <p className={listRowMetaClass}>
+                                                                {answer?.value ?? "No answer provided"}
+                                                            </p>
+                                                        </div>
+
+                                                    </div>
+                                                );
+
+                                            })}
                                         </div>
 
-                                    </li>
-                                )
-                            })
-                        }
-                    </ul>
+                                    </section>
+                                );
+
+                            })}
+                    </div>
                 </section>
 
                 <section className={sectionClass}>

@@ -934,29 +934,39 @@ app.post("/submissions", requireAuth, async (req, res) => {
                     id: workflowId,
                 },
                 include: {
-                    steps: true,
+                    pages: {
+                        include: {
+                            fields: true,
+                        }
+                    }
                 }
             });
             //We check if the workflow exists 
             if (!workflow) {
                 throw new Error("WORKFLOW_NOT_FOUND");
             }
-            //Reject a workflow with no steps
-            if (workflow.steps.length === 0) {
-                throw new Error("WORKFLOW_HAS_NO_STEPS");
-            }
-            const submittedStepIds = Object.keys(validAnswer);
+            // We create an array of fields
+            const workflowFields = workflow.pages.flatMap((page) => page.fields);
 
-            const workflowStepIds = workflow.steps.map(step => step.id);
+            //Reject a workflow with no fields
+            if (workflowFields.length === 0) {
+                throw new Error("WORKFLOW_HAS_NO_FIELDS")
+            }
+
+            const submittedFieldIds = Object.keys(validAnswer);
+
+            const workflowFieldIds = workflowFields.map(field => field.id);
 
             //We check if every submitted answer belongs to this workflow
-            const invalidStepIds = submittedStepIds.filter((stepId) =>
-                !workflowStepIds.includes(stepId));
-            //Check if every workflow step belongs to the submitted steps
-            const missingStepIds = workflowStepIds.filter((stepId) =>
-                !submittedStepIds.includes(stepId));
+            const invalidFieldIds = submittedFieldIds.filter(fieldId => !workflowFieldIds.includes(fieldId));
 
-            if (invalidStepIds.length > 0 || missingStepIds.length > 0) {
+            // Identify required fields
+            const requiredFields = workflowFields.filter(field => field.required);
+
+            // Find required fields that were not submitted
+            const missingRequiredFields = requiredFields.filter((field) => !submittedFieldIds.includes(field.id))
+
+            if (invalidFieldIds.length > 0 || missingRequiredFields.length > 0) {
                 throw new Error("SUBMISSION_ANSWER_DOES_NOT_MATCH_THIS_WORKFLOW");
             };
 
@@ -966,11 +976,11 @@ app.post("/submissions", requireAuth, async (req, res) => {
                     workflowId,
                     status: "submitted",
                     answers: {
-                        create: Object.entries(validAnswer).map(([stepId, value]) => ({
+                        create: Object.entries(validAnswer).map(([fieldId, value]) => ({
                             value,
-                            step: {
+                            field: {
                                 connect: {
-                                    id: stepId,
+                                    id: fieldId,
                                 },
                             },
                         })),
@@ -1003,8 +1013,8 @@ app.post("/submissions", requireAuth, async (req, res) => {
             if (error.message === "WORKFLOW_NOT_FOUND") {
                 return res.status(404).json({ message: "The workflow could not be found" });
             }
-            if (error.message === "WORKFLOW_HAS_NO_STEPS") {
-                return res.status(400).json({ message: "Cannot submit workflow with no steps" });
+            if (error.message === "WORKFLOW_HAS_NO_FIELDS") {
+                return res.status(400).json({ message: "Cannot submit workflow with no fields" });
             }
             if (error.message === "SUBMISSION_ANSWER_DOES_NOT_MATCH_THIS_WORKFLOW") {
                 return res.status(400).json({ message: "Submitted answers do not match this workflow" });
@@ -1035,7 +1045,15 @@ app.get("/submissions/:id", requireAuth, async (req, res) => {
                 userId
             },
             include: {
-                answers: true,
+                answers: {
+                    include: {
+                        field: {
+                            include: {
+                                page: true,
+                            }
+                        }
+                    }
+                },
                 activities: {
                     orderBy: {
                         createdAt: "asc",
@@ -1378,6 +1396,177 @@ app.delete("/workflows/:workflowId/pages/:pageId", requireAuth, requireAdmin, as
 
         return res.status(500).json({ message: "Failed to delete page" });
     }
+});
+
+// Move pages
+app.patch("/workflows/:workflowId/pages/:pageId/move", requireAuth, requireAdmin, async (req, res) => {
+    const { workflowId, pageId } = req.params;
+    const { direction } = req.body;
+
+    try {
+        if (typeof pageId !== "string" || typeof workflowId !== "string") {
+            return res.status(400).json({ message: "Workflow and page Id must be strings" })
+        }
+
+        const result = await prisma.$transaction(async (tx) => {
+            //Validate workflow
+            const workflow = await tx.workflow.findUnique({
+                where: {
+                    id: workflowId,
+                },
+            });
+            if (!workflow) throw new Error("WORKFLOW_NOT_FOUND");
+            //Validate pages
+            const currentPage = await tx.workflowPage.findUnique({
+                where: {
+                    id: pageId,
+                },
+            });
+            if (!currentPage) throw new Error("PAGE_NOT_FOUND");
+
+            if (currentPage.workflowId !== workflowId) {
+                throw new Error("PAGE_MISMATCH");
+            }
+            //Validate the direction of the move
+            if (direction !== "up" && direction !== "down") {
+                throw new Error("DIRECTION_MUST_BE_UP_OR_DOWN");
+            }
+
+            const remainingPages = await tx.workflowPage.findMany({
+                where: {
+                    workflowId,
+                },
+                orderBy: {
+                    order: "asc",
+                }
+            });
+
+            const currentIndex = remainingPages.findIndex((page) => page.id === pageId);
+            if (currentIndex === -1) throw new Error("INDEX_NOT_FOUND");
+
+            if (direction === "up") {
+                if (currentIndex === 0) {
+                    return {
+                        move: false,
+                        message: "Page already at the top",
+                        pages: remainingPages
+                    }
+                }
+                const targetIndex = currentIndex - 1;
+
+                const targetPage = remainingPages[targetIndex];
+
+                const tempOrder = currentPage.order;
+                currentPage.order = targetPage.order;
+                targetPage.order = tempOrder;
+                await tx.workflowPage.update({
+                    where: {
+                        id: pageId,
+                    },
+                    data: {
+                        order: currentPage.order,
+                    }
+
+                });
+
+                await tx.workflowPage.update({
+                    where: {
+                        id: targetPage.id,
+                    },
+                    data: {
+                        order: targetPage.order,
+                    }
+                });
+
+                const updatedPages = await tx.workflowPage.findMany({
+                    where: {
+                        workflowId,
+                    },
+                    orderBy: {
+                        order: "asc",
+                    }
+                });
+
+                return {
+                    move: true,
+                    message: "Page moved successfully",
+                    pages: updatedPages,
+                };
+            }
+
+            if (direction === "down") {
+                if (currentIndex === remainingPages.length - 1) {
+                    return {
+                        move: false,
+                        message: "Page already at the bottom",
+                        pages: remainingPages,
+                    }
+                }
+                const targetIndex = currentIndex + 1;
+
+                const targetPage = remainingPages[targetIndex];
+
+                const tempOrder = currentPage.order;
+                currentPage.order = targetPage.order;
+                targetPage.order = tempOrder;
+                await tx.workflowPage.update({
+                    where: {
+                        id: pageId,
+                    },
+                    data: {
+                        order: currentPage.order,
+                    }
+                });
+
+                await tx.workflowPage.update({
+                    where: {
+                        id: targetPage.id,
+                    },
+                    data: {
+                        order: targetPage.order,
+                    }
+                });
+
+                const updatedPages = await tx.workflowPage.findMany({
+                    where: {
+                        workflowId,
+                    },
+                    orderBy: {
+                        order: "asc",
+                    }
+                })
+                return {
+                    move: true,
+                    message: "Page moved successfully",
+                    page: updatedPages,
+                };
+            }
+        });
+        return res.status(200).json(result);
+    }
+    catch (error) {
+        if (error instanceof Error) {
+            if (error.message === "WORKFLOW_NOT_FOUND") {
+                return res.status(404).json({ message: "Could not find workflow" });
+            }
+            if (error.message === "PAGE_NOT_FOUND") {
+                return res.status(404).json({ message: "Could not find page" });
+            }
+            if (error.message === "PAGE_MISMATCH") {
+                return res.status(400).json({ message: "This page doesn't belong to this workflow" });
+            }
+            if (error.message === "DIRECTION_MUST_BE_UP_OR_DOWN") {
+                return res.status(400).json({ message: "Direction must be up or down" });
+            }
+            if (error.message === "INDEX_NOT_FOUND") {
+                return res.status(404).json({ message: "Index not found" });
+            }
+        }
+
+        console.error("Failed to move page", error);
+        return res.status(500).json({ message: "Failed to move page" });
+    }
+
 });
 
 //Create fields
@@ -1787,7 +1976,6 @@ app.delete("/workflows/:workflowId/pages/:pageId/fields/:fieldId", requireAuth, 
     }
 
 })
-
 
 const PORT = Number(process.env.PORT) || 4000;
 app.listen(PORT, "0.0.0.0", () => {
