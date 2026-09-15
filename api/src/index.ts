@@ -320,44 +320,19 @@ app.get("/workflows", async (req, res) => {
 
 //Route for creating workflows
 app.post("/workflows", requireAuth, requireAdmin, async (req, res) => {
-    const { name, steps } = req.body;
+    const { name } = req.body;
     //We first validate the workflow name
     if (!name || !name.trim()) {
         return res.status(400).json({ message: "The name is required" });
     }
-    //Then we validate steps array
-    if (!Array.isArray(steps) || steps.length === 0) {
-        return res.status(400).json({ message: "At least one step is required" });
-    }
-    //Then we validate each step title
-    const hasInvalidStep = steps.some(
-        (step) => !step.title || !step.title.trim()
-    );
-
-    if (hasInvalidStep) return res.status(400).json({
-        message: "Step title is required for each step"
-    });
 
     try {
-        //We insert a workflow and its steps 
-        // into the database now instead of memory arrays
+        //Create the workflow first.
+        // Pages and fields are added from the workflow detail page.
         const newWorkflow = await prisma.workflow.create({
             data: {
                 name: name.trim(),
-                steps: {
-                    create: steps.map((step, index) => ({
-                        title: step.title.trim(),
-                        order: typeof step.order === "number" ? step.order : index + 1,
-                    }))
-                },
             },
-            include: {
-                steps: {
-                    orderBy: {
-                        order: "asc",
-                    }
-                }
-            }
         })
         return res.status(201).json(newWorkflow);
     }
@@ -1456,15 +1431,18 @@ app.patch("/workflows/:workflowId/pages/:pageId/move", requireAuth, requireAdmin
 
                 const targetPage = remainingPages[targetIndex];
 
-                const tempOrder = currentPage.order;
-                currentPage.order = targetPage.order;
-                targetPage.order = tempOrder;
+                const targetPageOrder = targetPage.order;
+                const currentPageOrder = currentPage.order;
+
+                const max = Math.max(...remainingPages.map(page => page.order));
+                const tempOrder = max + 1;
+
                 await tx.workflowPage.update({
                     where: {
                         id: pageId,
                     },
                     data: {
-                        order: currentPage.order,
+                        order: tempOrder,
                     }
 
                 });
@@ -1474,8 +1452,18 @@ app.patch("/workflows/:workflowId/pages/:pageId/move", requireAuth, requireAdmin
                         id: targetPage.id,
                     },
                     data: {
-                        order: targetPage.order,
+                        order: currentPageOrder,
                     }
+                });
+
+                await tx.workflowPage.update({
+                    where: {
+                        id: pageId,
+                    },
+                    data: {
+                        order: targetPageOrder,
+                    }
+
                 });
 
                 const updatedPages = await tx.workflowPage.findMany({
@@ -1506,16 +1494,20 @@ app.patch("/workflows/:workflowId/pages/:pageId/move", requireAuth, requireAdmin
 
                 const targetPage = remainingPages[targetIndex];
 
-                const tempOrder = currentPage.order;
-                currentPage.order = targetPage.order;
-                targetPage.order = tempOrder;
+                const targetPageOrder = targetPage.order;
+                const currentPageOrder = currentPage.order;
+
+                const max = Math.max(...remainingPages.map(page => page.order));
+                const tempOrder = max + 1;
+
                 await tx.workflowPage.update({
                     where: {
                         id: pageId,
                     },
                     data: {
-                        order: currentPage.order,
+                        order: tempOrder,
                     }
+
                 });
 
                 await tx.workflowPage.update({
@@ -1523,8 +1515,18 @@ app.patch("/workflows/:workflowId/pages/:pageId/move", requireAuth, requireAdmin
                         id: targetPage.id,
                     },
                     data: {
-                        order: targetPage.order,
+                        order: currentPageOrder,
                     }
+                });
+
+                await tx.workflowPage.update({
+                    where: {
+                        id: pageId,
+                    },
+                    data: {
+                        order: targetPageOrder,
+                    }
+
                 });
 
                 const updatedPages = await tx.workflowPage.findMany({
@@ -1538,7 +1540,7 @@ app.patch("/workflows/:workflowId/pages/:pageId/move", requireAuth, requireAdmin
                 return {
                     move: true,
                     message: "Page moved successfully",
-                    page: updatedPages,
+                    pages: updatedPages,
                 };
             }
         });

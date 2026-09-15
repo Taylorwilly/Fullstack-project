@@ -120,7 +120,7 @@ export default function Home() {
                         <li> JWT authentication and role-based authorization</li>
                         <li> Client-only access to personal submissions</li>
                         <li> Admin access to all submissions</li>
-                        <li> Workflow and page field management</li>
+                        <li> Workflow page and field management</li>
                         <li> PostgreSQL database with Prisma ORM</li>
                         <li> Production frontend, API and database deployment</li>
                     </ul>
