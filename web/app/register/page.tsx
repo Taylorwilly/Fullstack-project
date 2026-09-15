@@ -2,6 +2,8 @@
 
 import { useState, SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { appPageClass, errorMessageClass, fieldInputClass, narrowContentWrapperClass, pageHeaderClass, pageIntroClass, pageLabelClass, panelClass, panelTitleClass, primaryActionClass, secondaryActionClass } from "../components/ui";
 
 type Registration = {
     name: string;
@@ -65,76 +67,106 @@ export default function RegisterPage() {
             setSubmitting(false);
         }
     }
+
     return (
-        <main>
-            <h1 className="font-bold p-3 text-3xl">
-                Create account to save and manage your intake submissions
-            </h1>
-            <p className="font-semibold text-2xl">
-                This page is for creating account
-            </p>
-            <form
-                onSubmit={handleSubmit}
-                className="mt-8 space-y-3 rounded border p-4"
-            >
+        <main className={appPageClass}>
+            <div className={narrowContentWrapperClass}>
+                <header>
+                    <p className={pageLabelClass}>
+                        Client portal
+                    </p>
 
-                <fieldset>
-                    <legend>Registration details</legend>
-                    <label>Name</label>
-                    <input
-                        type="text"
-                        value={registration.name}
-                        onChange={(e) => setRegistration({ ...registration, name: e.target.value })}
-                        className="w-full rounded border px-3 py-2"
-                        required
-                    />
+                    <h1 className={pageHeaderClass}>
+                        Create your account
+                    </h1>
 
-                    <label>Email</label>
-                    <input
-                        type="email"
-                        value={registration.email}
-                        onChange={(e) => setRegistration({ ...registration, email: e.target.value })}
-                        className="w-full rounded border px-3 py-2"
-                        required
-                    />
-
-                    <label>Password</label>
-                    <input
-                        type="password"
-                        value={registration.password}
-                        onChange={(e) => setRegistration({ ...registration, password: e.target.value })}
-                        className="w-full rounded border px-3 py-2"
-                        required
-                    />
-
-                    <label>Confirm password</label>
-                    <input
-                        type="password"
-                        value={registration.confirmPassword}
-                        onChange={(e) => setRegistration({ ...registration, confirmPassword: e.target.value })}
-                        className="w-full rounded border px-3 py-2"
-                        required
-                    />
-                </fieldset>
-
-                {
-                    errorMessage && (
-                        <p
-                            role="alert"
-                            className="mt-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-red-800"
-                        >
-                            {errorMessage}
-                        </p>
-                    )
-                }
-                <button
-                    type="submit"
-                    disabled={submitting}
-                    className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+                    <p className={pageIntroClass}>
+                        Save your submissions and keep track of their review status.
+                    </p>
+                </header>
+                <form
+                    onSubmit={handleSubmit}
+                    className={panelClass}
                 >
-                    {submitting ? "Submitting..." : "Submit"}
-                </button>
-            </form>
+
+                    <fieldset>
+                        <legend className={panelTitleClass}>Registration details</legend>
+
+                        <div className="mt-5">
+                            <label className={pageLabelClass}>Name</label>
+                            <input
+                                type="text"
+                                value={registration.name}
+                                onChange={(e) => setRegistration({ ...registration, name: e.target.value })}
+                                className={fieldInputClass}
+                                required
+                            />
+                        </div>
+
+                        <div className="mt-5">
+                            <label>Email</label>
+                            <input
+                                type="email"
+                                value={registration.email}
+                                onChange={(e) => setRegistration({ ...registration, email: e.target.value })}
+                                className={fieldInputClass}
+                                required
+                            />
+                        </div>
+
+                        <div className="mt-5">
+                            <label>Password</label>
+                            <input
+                                type="password"
+                                value={registration.password}
+                                onChange={(e) => setRegistration({ ...registration, password: e.target.value })}
+                                className={fieldInputClass}
+                                required
+                            />
+                        </div>
+
+                        <div className="mt-5">
+                            <label>Confirm password</label>
+                            <input
+                                type="password"
+                                value={registration.confirmPassword}
+                                onChange={(e) => setRegistration({ ...registration, confirmPassword: e.target.value })}
+                                className={fieldInputClass}
+                                required
+                            />
+                        </div>
+                    </fieldset>
+
+                    {
+                        errorMessage && (
+                            <p
+                                role="alert"
+                                className={errorMessageClass}
+                            >
+                                {errorMessage}
+                            </p>
+                        )
+                    }
+                    <button
+                        type="submit"
+                        disabled={submitting}
+                        className={primaryActionClass}
+                    >
+                        {submitting ? "Creating account..." : "Create account"}
+                    </button>
+
+                    <p className="mt-5 text-sm text-[#66736d]">
+                        Already have an account?{" "}
+                        <Link
+                            href="/login"
+                            className={secondaryActionClass}
+                        >
+                            Sign in
+                        </Link>
+                    </p>
+                </form>
+            </div>
+
         </main>
     )
 }

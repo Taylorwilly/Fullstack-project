@@ -1,5 +1,6 @@
 "use client";
 
+import { appPageClass, narrowContentWrapperClass, pageHeadingClass, pageLabelClass, panelClass, primaryActionClass } from "@/app/components/ui";
 import { useRouter } from "next/navigation";
 import { useState, SubmitEvent } from "react";
 
@@ -63,17 +64,22 @@ export default function NewWorkflowPage() {
 
     }
     return (
-        <main className="min-h-screen p-8">
-            <div className="mx-auto max-w-2xl">
-                <h1 className="text-3xl font-bold">
-                    Create Workflow
-                </h1>
-                <p className="mt-2 text-gray-600 text-xl">
-                    Create a workflow, then add pages and fields from the workflow builder.
-                </p>
-                <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-                    <div className="rounded border p-4 text-xl">
-                        <label className="block text-xl font-medium">
+        <main className={appPageClass}>
+            <section className={narrowContentWrapperClass}>
+                <header className="mb-6 space-y-2">
+                    <p className={pageLabelClass}>
+                        Workflow builder
+                    </p>
+                    <h1 className={pageHeadingClass}>
+                        Create workflow
+                    </h1>
+                    <p>
+                        Create a workflow, then add pages and fields from the workflow builder
+                    </p>
+                </header>
+                <form onSubmit={handleSubmit} className={panelClass}>
+                    <div>
+                        <label className="block text-sm font-medium text-[#24332e]">
                             Workflow Name
                         </label>
                         <input
@@ -82,14 +88,14 @@ export default function NewWorkflowPage() {
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             required
-                            className="mt-2 w-full rounded border px-3 py-2"
+                            className="mt-2 w-full rounded-md border border-[#d8ded7] bg-white px-3 py-2 text-[#24332e] outline-none focus:border-[#1c5a4b]"
                         />
                     </div>
 
                     <button
                         type="submit"
                         disabled={submitting}
-                        className="rounded bg-black px-4 py-2 text-white disabled:opacity-50">
+                        className={primaryActionClass}>
                         {submitting ? "Creating..." : "Create Workflow"}
                     </button>
 
@@ -106,7 +112,7 @@ export default function NewWorkflowPage() {
 
                 </form>
 
-            </div>
+            </section>
 
         </main>
     )
