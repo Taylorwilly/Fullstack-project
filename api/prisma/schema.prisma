@@ -36,10 +36,24 @@ model User {
   name               String?
   passwordHash       String
   role               Role                 @default(CLIENT)
+  sessions           Session[]
   submissions        Submission[]
   submissionActivity SubmissionActivity[]
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
+}
+
+model Session {
+  id                String    @id @default(cuid())
+  userId            String
+  tokenHash         String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime  @default(now())
+  lastActivityAt    DateTime  @default(now())
+  absoluteExpiresAt DateTime
+  revokedAt         DateTime?
+
+  @@index([userId])
 }
 
 model Workflow {
